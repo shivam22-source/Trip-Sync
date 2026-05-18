@@ -1,4 +1,5 @@
 const Message = require("../models/Message");
+const Member = require("../models/Member");
 const Trip = require("../models/Trip");
 
 const onlineUsers = new Map();
@@ -85,8 +86,9 @@ console.log(onlineUsers);
 
         try {
             const userId = socket.userId;
+            const { tripId, content, type } = data;
             const trip =
-                await Trip.findById(tripId);
+                    await Trip.findById(tripId);
             if (!trip) {
                 return socket.emit(
                     "error-message",
@@ -124,14 +126,19 @@ console.log(onlineUsers);
             }
             // SAVE MESSAGE
             const message = await Message.create({
-                tripId: data.tripId,
-                sender: data.sender,
-                content: data.content,
-                type: data.type || "text",
+                tripId,
+                sender: userId,
+                content,
+                type: type || "text",
             });
 
+            await message.populate(
+                "sender",
+                "name email"
+            );
+
             // SEND REALTIME
-            io.to(data.tripId).emit(
+            io.to(tripId).emit(
                 "receive-message",
                 message
             );

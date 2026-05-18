@@ -40,7 +40,7 @@ router.patch(
   rejectMember
 );
 
-router.get("/:id", getSingleTrip);
+router.get("/:id", protect, getSingleTrip);
 
 
 router.delete("/:id", protect, deleteTrip);

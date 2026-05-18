@@ -27,6 +27,13 @@ const userSchema = new mongoose.Schema(
       default: "",
     },
 
+    bio: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 240,
+    },
+
     preferences: {
       smoking: {
         type: Boolean,

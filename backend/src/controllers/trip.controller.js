@@ -1,5 +1,12 @@
 const Trip = require("../models/Trip");
 const Member = require("../models/Member");
+
+const budgetRanges = {
+  low: { min: 100, max: 800 },
+  medium: { min: 800, max: 3000 },
+  high: { min: 3000, max: 10000 },
+};
+
 const createTrip = async (req, res) => {
   try {
     const {
@@ -10,7 +17,9 @@ const createTrip = async (req, res) => {
       endDate,
       category,
       budget,
+      budgetPerDay,
       maxMembers,
+      filters,
     } = req.body;
 
     const trip = await Trip.create({
@@ -23,7 +32,16 @@ const createTrip = async (req, res) => {
       endDate,
       category,
       budget,
+      budgetPerDay:
+        budgetPerDay?.min && budgetPerDay?.max
+          ? budgetPerDay
+          : budgetRanges[budget] || budgetRanges.medium,
       maxMembers,
+      filters: {
+        smokingAllowed: Boolean(filters?.smokingAllowed),
+        drinkingAllowed: Boolean(filters?.drinkingAllowed),
+        genderPreference: filters?.genderPreference || "any",
+      },
 
       currentMembers: [req.user.id],
     });
@@ -43,7 +61,38 @@ const createTrip = async (req, res) => {
 const getTrips = async (req, res) => {
   try {
 
-    const trips = await Trip.find()
+    const {
+      category,
+      budget,
+      smokingAllowed,
+      drinkingAllowed,
+      genderPreference,
+      q,
+    } = req.query;
+
+    const query = {
+      ...(category && category !== "all" ? { category } : {}),
+      ...(budget && budget !== "all" ? { budget } : {}),
+      ...(smokingAllowed === "true"
+        ? { "filters.smokingAllowed": true }
+        : {}),
+      ...(drinkingAllowed === "true"
+        ? { "filters.drinkingAllowed": true }
+        : {}),
+      ...(genderPreference && genderPreference !== "any"
+        ? { "filters.genderPreference": genderPreference }
+        : {}),
+      ...(q
+        ? {
+            $or: [
+              { title: { $regex: q, $options: "i" } },
+              { destination: { $regex: q, $options: "i" } },
+            ],
+          }
+        : {}),
+    };
+
+    const trips = await Trip.find(query)
       .populate("admin", "name email")
       .select("-currentMembers");
 
@@ -63,7 +112,7 @@ const getSingleTrip = async (req, res) => {
       .populate("admin", "name email")
       .populate(
         "currentMembers",
-        "name email"
+        "name email bio preferences profilePhoto"
       );
 
     if (!trip) {
@@ -97,6 +146,26 @@ const getSingleTrip = async (req, res) => {
 
     if (!isAllowedToSeeMembers) {
       responseTrip.currentMembers = [];
+    }
+
+    responseTrip.viewerRole = "guest";
+    responseTrip.viewerRequestStatus = "none";
+
+    if (req.user?.id) {
+      if (trip.admin._id.toString() === req.user.id) {
+        responseTrip.viewerRole = "admin";
+        responseTrip.viewerRequestStatus = "accepted";
+      } else {
+        const viewerMember = await Member.findOne({
+          tripId: trip._id,
+          userId: req.user.id,
+        });
+
+        if (viewerMember) {
+          responseTrip.viewerRole = "member";
+          responseTrip.viewerRequestStatus = viewerMember.status;
+        }
+      }
     }
 
 
@@ -194,7 +263,7 @@ const getPendingRequests = async (req, res) => {
     const requests = await Member.find({
       tripId,
       status: "pending",
-    }).populate("userId", "name email");
+    }).populate("userId", "name email bio preferences profilePhoto");
 
     res.status(200).json({
       requests,

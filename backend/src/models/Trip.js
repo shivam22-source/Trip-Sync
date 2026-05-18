@@ -47,6 +47,17 @@ const tripSchema = new mongoose.Schema(
       default: "medium",
     },
 
+    budgetPerDay: {
+      min: {
+        type: Number,
+        default: 800,
+      },
+      max: {
+        type: Number,
+        default: 3000,
+      },
+    },
+
     maxMembers: {
       type: Number,
       required: true,

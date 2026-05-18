@@ -1,58 +1,79 @@
 const Message = require("../models/Message");
+const Member = require("../models/Member");
+const Trip = require("../models/Trip");
 
-//markMessagesAsRead///
+async function canAccessTripChat(tripId, userId) {
+  const trip = await Trip.findById(tripId);
 
-const markMessagesAsRead =
-async (req, res) => {
+  if (!trip) {
+    return { allowed: false, reason: "Trip not found" };
+  }
 
+  if (trip.admin.toString() === userId) {
+    return { allowed: true, trip };
+  }
+
+  const member = await Member.findOne({
+    tripId,
+    userId,
+    status: "accepted",
+  });
+
+  return member
+    ? { allowed: true, trip }
+    : { allowed: false, reason: "Access denied" };
+}
+
+const getTripMessages = async (req, res) => {
   try {
-
-    const tripId = req.params.tripId;
-
+    const { tripId } = req.params;
     const userId = req.user.id;
 
-    // CHECK ACCESS
-    const trip =
-    await Trip.findById(tripId);
+    const access = await canAccessTripChat(tripId, userId);
 
-    if (!trip) {
-
-      return res.status(404).json({
-        message: "Trip not found",
+    if (!access.allowed) {
+      const statusCode = access.reason === "Trip not found" ? 404 : 403;
+      return res.status(statusCode).json({
+        message: access.reason,
       });
-
     }
 
-    let allowed = false;
+    const page = Number(req.query.page) || 1;
+    const limit = 20;
+    const skip = (page - 1) * limit;
 
-    // ADMIN
-    if (
-      trip.admin.toString() === userId
-    ) {
-      allowed = true;
-    }
+    const messages = await Message.find({ tripId })
+      .populate("sender", "name email")
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
 
-    // ACCEPTED MEMBER
-    const member =
-    await Member.findOne({
-      tripId,
-      userId,
-      status: "accepted",
+    res.status(200).json({
+      page,
+      count: messages.length,
+      messages: messages.reverse(),
     });
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
+    });
+  }
+};
 
-    if (member) {
-      allowed = true;
-    }
+const markMessagesAsRead = async (req, res) => {
+  try {
+    const { tripId } = req.params;
+    const userId = req.user.id;
 
-    if (!allowed) {
+    const access = await canAccessTripChat(tripId, userId);
 
-      return res.status(403).json({
-        message: "Access denied",
+    if (!access.allowed) {
+      const statusCode = access.reason === "Trip not found" ? 404 : 403;
+      return res.status(statusCode).json({
+        message: access.reason,
       });
-
     }
 
-    // UPDATE MESSAGES
     await Message.updateMany(
       {
         tripId,
@@ -65,125 +86,16 @@ async (req, res) => {
     );
 
     res.status(200).json({
-      message:
-      "Messages marked as read",
+      message: "Messages marked as read",
     });
-
   } catch (error) {
-
     res.status(500).json({
       message: error.message,
     });
-
-  }
-
-};
-
-///getTripMessages///
-
-const getTripMessages = async (req, res) => {
-  try {
-
-   const getTripMessages = async (
-  req,
-  res
-) => {
-
-  try {
-
-    const { tripId } = req.params;
-
-    const userId = req.user.id;
-
-    // CHECK TRIP
-    const trip =
-    await Trip.findById(tripId);
-
-    if (!trip) {
-
-      return res.status(404).json({
-        message: "Trip not found",
-      });
-
-    }
-
-    let allowed = false;
-
-    // ADMIN CHECK
-    if (
-      trip.admin.toString() === userId
-    ) {
-      allowed = true;
-    }
-
-    // MEMBER CHECK
-    const member =
-    await Member.findOne({
-      tripId,
-      userId,
-      status: "accepted",
-    });
-
-    if (member) {
-      allowed = true;
-    }
-
-    if (!allowed) {
-
-      return res.status(403).json({
-        message: "Access denied",
-      });
-
-    }
-
-    // PAGINATION
-    const page =
-      Number(req.query.page) || 1;
-
-    const limit = 20;
-
-    const skip =
-      (page - 1) * limit;
-
-    // GET MESSAGES
-    const messages =
-    await Message.find({ tripId })
-
-      .populate(
-        "sender",
-        "name email"
-      )
-
-      .sort({ createdAt: -1 })
-
-      .skip(skip)
-
-      .limit(limit);
-
-    res.status(200).json({
-      page,
-      count: messages.length,
-      messages,
-    });
-
-  } catch (error) {
-
-   
-
-  }
-
-};
-
-  } catch (error) {
- res.status(500).json({
-      message: error.message,
-    });
-   
-
   }
 };
 
 module.exports = {
   getTripMessages,
-  markMessagesAsRead
+  markMessagesAsRead,
 };
