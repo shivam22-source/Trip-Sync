@@ -480,19 +480,5 @@ Chat unlocks for both accounts
 Both accounts send realtime messages
 ```
 
-## Production Notes
 
-Before production:
-
-- Use strong `JWT_SECRET`
-- Restrict CORS origin
-- Hide passwords from auth responses
-- Add request validation
-- Add centralized error middleware
-- Add rate limiting
-- Add refresh token flow if needed
-- Use HTTPS backend URL in frontend env
-- Deploy MongoDB on Atlas
-- Deploy backend on Render/Railway
-- Deploy frontend on Vercel/Netlify
 
