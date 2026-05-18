@@ -226,6 +226,78 @@ Backend emits receive-message to trip room
 Frontend appends message to state
 ```
 
+### Expense Splitter
+
+The trip detail page includes a backend-connected expense splitter dashboard:
+
+- Balance hero with "You Owe", "You Are Owed", and net balance
+- Add expense modal with amount, description, category, receipt screenshot, and split equally toggle
+- Recent expenses list with category icon, payer, total amount, receipt name, and date
+- Trip-member access control for expense reads and writes
+
+Current implementation:
+
+```txt
+frontend/src/components/expenses/ExpenseDashboard.jsx
+frontend/src/components/expenses/BalanceHero.jsx
+frontend/src/components/expenses/ExpenseCard.jsx
+frontend/src/components/expenses/ExpenseModal.jsx
+
+backend/src/models/Expense.js
+backend/src/controllers/expense.controller.js
+backend/src/routes/expense.routes.js
+```
+
+API routes:
+
+```txt
+GET  /api/expenses/:tripId
+POST /api/expenses/:tripId
+```
+
+Expense fields:
+
+```txt
+tripId
+paidBy
+amount
+description
+category
+splitEqually
+receiptName
+receiptImage
+```
+
+Only the trip admin and accepted trip members can view or add expenses. The frontend loads expenses with `GET /api/expenses/:tripId` and saves new expenses with `POST /api/expenses/:tripId`.
+
+Receipt screenshot flow:
+
+```txt
+User selects screenshot in Add Expense modal
+Frontend converts image to a base64 data URL
+Backend stores receiptName and receiptImage on the Expense document
+Future AI/OCR agent can read receiptImage and auto-fill amount, category, date, and description
+```
+
+For production, store receipt images in Cloudinary, S3, or another object store, then save only the hosted receipt URL in MongoDB.
+
+Suggested split logic:
+
+```txt
+expenseShare = expense.amount / acceptedMembers.length
+
+If current user paid:
+  user is owed expenseShare from every other member
+
+If another member paid:
+  current user owes that payer expenseShare
+
+Net balance:
+  totalOwedToUser - totalUserOwes
+```
+
+For unequal splits later, store participant shares per expense instead of using one equal share for every accepted member.
+
 ## Frontend Architecture
 
 ### Routing
@@ -479,6 +551,4 @@ Account B refreshes trip detail
 Chat unlocks for both accounts
 Both accounts send realtime messages
 ```
-
-
 

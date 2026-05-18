@@ -123,4 +123,12 @@ export const api = {
     request(`/messages/read/${tripId}`, {
       method: "PATCH",
     }),
+
+  getExpenses: (tripId) => request(`/expenses/${tripId}`),
+
+  createExpense: (tripId, payload) =>
+    request(`/expenses/${tripId}`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
 };

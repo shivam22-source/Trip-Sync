@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import ExpenseDashboard from "../components/expenses/ExpenseDashboard";
 import TripChat from "../components/TripChat";
 import { api, getStoredUser, getToken } from "../services/api";
 
@@ -25,6 +26,90 @@ function formatBudget(trip) {
   }
 
   return `Rs ${trip.budgetPerDay.min}-${trip.budgetPerDay.max} / person / day`;
+}
+
+function ProfileSummary({ person }) {
+  return (
+    <div>
+      <p className="font-black text-slate-950">{person?.name || "Traveler"}</p>
+      <p className="text-sm font-semibold text-slate-500">
+        {[person?.age, person?.gender, person?.city].filter(Boolean).join(" | ")}
+      </p>
+      <p className="text-sm font-semibold text-slate-500">{person?.email}</p>
+      {person?.bio && (
+        <p className="mt-2 max-w-xl text-sm leading-6 text-slate-600">
+          {person.bio}
+        </p>
+      )}
+      <div className="mt-3 flex flex-wrap gap-2">
+        {[
+          person?.occupation,
+          person?.languages,
+          person?.preferences?.vibe,
+          person?.travelProfile?.travelStyle,
+          person?.travelProfile?.groupRole,
+          person?.preferences?.budget
+            ? `${person.preferences.budget} budget`
+            : "",
+        ]
+          .filter(Boolean)
+          .map((item) => (
+            <span
+              key={item}
+              className="rounded-full bg-white px-3 py-1 text-xs font-bold capitalize text-slate-600"
+            >
+              {item}
+            </span>
+          ))}
+      </div>
+      {(person?.travelProfile?.whyTravel || person?.travelProfile?.boundaries) && (
+        <div className="mt-3 grid gap-2 text-sm leading-6 text-slate-600">
+          {person.travelProfile.whyTravel && (
+            <p>
+              <span className="font-bold text-slate-800">Why travel: </span>
+              {person.travelProfile.whyTravel}
+            </p>
+          )}
+          {person.travelProfile.boundaries && (
+            <p>
+              <span className="font-bold text-slate-800">Comfort notes: </span>
+              {person.travelProfile.boundaries}
+            </p>
+          )}
+        </div>
+      )}
+      {person?.compatibility && (
+        <div className="mt-3 rounded-2xl bg-white p-3">
+          <p className="text-xs font-black uppercase tracking-wide text-slate-400">
+            Compatibility signals
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {[
+              ["Money", person.compatibility.spendingBehavior],
+              ["Split", person.compatibility.expenseSplit],
+              ["Sleep", person.compatibility.sleepSchedule],
+              ["Morning", person.compatibility.morningStyle],
+              ["Clean", person.compatibility.cleanliness],
+              ["Social", person.compatibility.socialEnergy],
+              ["Food", person.compatibility.foodPreference],
+              ["Activity", person.compatibility.activityPreference],
+              ["Pace", person.compatibility.travelPace],
+              ["Talk", person.compatibility.communicationStyle],
+            ]
+              .filter(([, value]) => Boolean(value))
+              .map(([label, value]) => (
+                <span
+                  key={`${label}-${value}`}
+                  className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold capitalize text-slate-700"
+                >
+                  {label}: {value}
+                </span>
+              ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function TripDetailsPage() {
@@ -309,37 +394,7 @@ function TripDetailsPage() {
                   key={request._id}
                   className="flex flex-col gap-3 rounded-2xl bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between"
                 >
-                  <div>
-                    <p className="font-black text-slate-950">
-                      {request.userId?.name || "Traveler"}
-                    </p>
-                    <p className="text-sm font-semibold text-slate-500">
-                      {request.userId?.email}
-                    </p>
-                    {request.userId?.bio && (
-                      <p className="mt-2 max-w-xl text-sm leading-6 text-slate-600">
-                        {request.userId.bio}
-                      </p>
-                    )}
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      <span className="rounded-full bg-white px-3 py-1 text-xs font-bold capitalize text-slate-600">
-                        Vibe: {request.userId?.preferences?.vibe || "peaceful"}
-                      </span>
-                      <span className="rounded-full bg-white px-3 py-1 text-xs font-bold capitalize text-slate-600">
-                        Budget: {request.userId?.preferences?.budget || "medium"}
-                      </span>
-                      <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600">
-                        {request.userId?.preferences?.smoking
-                          ? "Smokes"
-                          : "No smoking"}
-                      </span>
-                      <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600">
-                        {request.userId?.preferences?.drinking
-                          ? "Drinks"
-                          : "No drinking"}
-                      </span>
-                    </div>
-                  </div>
+                  <ProfileSummary person={request.userId} />
                   <div className="flex gap-2">
                     <button
                       onClick={() =>
@@ -380,25 +435,7 @@ function TripDetailsPage() {
             <div className="mt-5 space-y-3">
               {trip.currentMembers.map((member) => (
                 <div key={member._id} className="rounded-2xl bg-slate-50 p-4">
-                  <p className="font-black text-slate-950">
-                    {member.name || "Traveler"}
-                  </p>
-                  <p className="text-sm font-semibold text-slate-500">
-                    {member.email}
-                  </p>
-                  {member.bio && (
-                    <p className="mt-2 text-sm leading-6 text-slate-600">
-                      {member.bio}
-                    </p>
-                  )}
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <span className="rounded-full bg-white px-3 py-1 text-xs font-bold capitalize text-slate-600">
-                      {member.preferences?.vibe || "peaceful"}
-                    </span>
-                    <span className="rounded-full bg-white px-3 py-1 text-xs font-bold capitalize text-slate-600">
-                      {member.preferences?.budget || "medium"} budget
-                    </span>
-                  </div>
+                  <ProfileSummary person={member} />
                 </div>
               ))}
             </div>
@@ -413,6 +450,10 @@ function TripDetailsPage() {
 
       <section className="mt-6">
         <TripChat tripId={id} canChat={canChat} />
+      </section>
+
+      <section className="mt-6">
+        <ExpenseDashboard tripId={id} />
       </section>
     </main>
   );

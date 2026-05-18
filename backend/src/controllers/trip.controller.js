@@ -1,5 +1,6 @@
 const Trip = require("../models/Trip");
 const Member = require("../models/Member");
+const Message =require("../models/Message");
 
 const budgetRanges = {
   low: { min: 100, max: 800 },
@@ -45,6 +46,7 @@ const createTrip = async (req, res) => {
 
       currentMembers: [req.user.id],
     });
+    
 
     res.status(201).json({
       message: "Trip created successfully",
@@ -112,7 +114,7 @@ const getSingleTrip = async (req, res) => {
       .populate("admin", "name email")
       .populate(
         "currentMembers",
-        "name email bio preferences profilePhoto"
+        "name email bio age gender city occupation languages preferences travelProfile compatibility profilePhoto"
       );
 
     if (!trip) {
@@ -263,7 +265,10 @@ const getPendingRequests = async (req, res) => {
     const requests = await Member.find({
       tripId,
       status: "pending",
-    }).populate("userId", "name email bio preferences profilePhoto");
+    }).populate(
+      "userId",
+      "name email bio age gender city occupation languages preferences travelProfile compatibility profilePhoto"
+    );
 
     res.status(200).json({
       requests,
@@ -308,7 +313,25 @@ const acceptMember = async (req, res) => {
 
     await member.save();
 
-    trip.currentMembers.push(member.userId);
+  const alreadyExists =
+  trip.currentMembers.some(
+    (id) =>
+      id.toString() ===
+      member.userId.toString()
+  );
+
+if (!alreadyExists) {
+  trip.currentMembers.push(
+    member.userId
+  );
+}
+
+    if (
+  trip.currentMembers.length >=
+  trip.maxMembers
+) {
+  trip.status = "full";
+}
 
     await trip.save();
 
@@ -387,6 +410,14 @@ const deleteTrip = async (req, res) => {
         message: "Access denied",
       });
     }
+
+    await Member.deleteMany({
+  tripId: trip._id,
+});
+
+await Message.deleteMany({
+  tripId: trip._id,
+});
 
     await trip.deleteOne();
 

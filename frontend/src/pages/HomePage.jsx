@@ -6,15 +6,16 @@ function HomePage() {
       <section className="mx-auto grid max-w-7xl items-center gap-10 px-4 py-12 sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:px-8 lg:py-20">
         <div className="animate-rise">
           <p className="mb-4 inline-flex rounded-full border border-teal-200 bg-teal-50 px-4 py-2 text-sm font-bold text-teal-800">
-            MVP v1 frontend integration
+            Find safe travel buddies
           </p>
           <h1 className="max-w-3xl text-4xl font-black leading-tight tracking-normal text-slate-950 sm:text-6xl">
-            Plan trips with people who match your travel vibe.
+            Join group trips with people you can actually trust.
           </h1>
           <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-600">
-            Travel Buddy helps users discover group trips, create invitations,
-            request to join, and manage members from a clean React interface
-            connected to your existing Node backend.
+            Create a trip, review join requests, read real travel profiles, and
+            accept people who match the group. No paid tour manager, no forced
+            booking flow. Just travelers choosing the right people before they
+            go together.
           </p>
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
@@ -37,7 +38,7 @@ function HomePage() {
           <div className="rounded-[1.5rem] bg-slate-950 p-5 text-white">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-bold text-teal-200">Next group</p>
+                <p className="text-sm font-bold text-teal-200">Open trip</p>
                 <h2 className="mt-1 text-2xl font-black">Manali winter trek</h2>
               </div>
               <span className="rounded-full bg-emerald-400 px-3 py-1 text-xs font-black text-emerald-950">
@@ -59,9 +60,9 @@ function HomePage() {
             </div>
 
             <div className="mt-6 rounded-2xl bg-white p-4 text-slate-950">
-              <p className="text-sm font-black">MVP flow</p>
+              <p className="text-sm font-black">How it works</p>
               <div className="mt-4 space-y-3">
-                {["Login", "Browse trips", "Create or join", "Admin accepts"].map(
+                {["Complete profile", "Explore trips", "Request to join", "Admin reviews fit"].map(
                   (item, index) => (
                     <div key={item} className="flex items-center gap-3">
                       <span className="grid h-8 w-8 place-items-center rounded-full bg-amber-100 text-sm font-black text-amber-800">
@@ -80,9 +81,9 @@ function HomePage() {
       <section className="border-y border-slate-200 bg-white">
         <div className="mx-auto grid max-w-7xl gap-4 px-4 py-8 sm:px-6 md:grid-cols-3 lg:px-8">
           {[
-            ["Auth ready", "Login and register use the backend JWT response."],
-            ["Trip workflow", "List, create, view, join, delete, and handle requests."],
-            ["Responsive UI", "Mobile-first Tailwind screens with gentle motion."],
+            ["Real profiles", "See travel style, comfort notes, languages, and group energy."],
+            ["Admin permission", "Trip creators decide who can join before chat unlocks."],
+            ["Group chat", "Accepted members can coordinate plans in the trip room."],
           ].map(([title, copy]) => (
             <div key={title} className="rounded-2xl border border-slate-200 p-5">
               <h3 className="text-lg font-black text-slate-950">{title}</h3>

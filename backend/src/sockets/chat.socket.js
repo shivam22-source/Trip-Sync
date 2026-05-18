@@ -125,6 +125,12 @@ console.log(onlineUsers);
 
             }
             // SAVE MESSAGE
+            if (!content?.trim()) {
+                return socket.emit(
+                    "error-message",
+                    "Message cannot be empty"
+                );
+}
             const message = await Message.create({
                 tripId,
                 sender: userId,

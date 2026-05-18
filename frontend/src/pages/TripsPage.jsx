@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import TripCard from "../components/TripCard";
 import { api } from "../services/api";
 
+
 const initialForm = {
   title: "",
   destination: "",
@@ -148,14 +149,15 @@ function TripsPage() {
       <section className="flex flex-col justify-between gap-5 md:flex-row md:items-end">
         <div>
           <p className="text-sm font-black uppercase tracking-[0.2em] text-teal-700">
-            Trip board
+            Find a group
           </p>
           <h1 className="mt-3 text-4xl font-black text-slate-950">
-            Discover and create travel invitations
+            Explore trips that match your comfort and budget
           </h1>
           <p className="mt-3 max-w-2xl text-slate-600">
-            This protected page uses your existing trip APIs. Logged-in users
-            can browse, create, and request to join trips.
+            Search by destination, vibe, daily budget, and group rules. If you
+            like a plan, request to join and the trip admin will review your
+            travel profile.
           </p>
         </div>
         <button
