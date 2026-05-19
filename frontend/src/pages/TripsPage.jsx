@@ -146,7 +146,8 @@ function TripsPage() {
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      <section className="flex flex-col justify-between gap-5 md:flex-row md:items-end">
+      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm md:p-8">
+        <div className="flex flex-col justify-between gap-5 md:flex-row md:items-end">
         <div>
           <p className="text-sm font-black uppercase tracking-[0.2em] text-teal-700">
             Find a group
@@ -162,14 +163,91 @@ function TripsPage() {
         </div>
         <button
           onClick={() => document.getElementById("create-trip-form")?.scrollIntoView()}
-          className="rounded-full bg-slate-950 px-5 py-3 text-center text-sm font-black text-white"
+          className="w-fit rounded-full bg-slate-950 px-5 py-3 text-center text-sm font-black text-white transition hover:-translate-y-0.5 hover:bg-slate-800"
         >
           Create trip
         </button>
+        </div>
       </section>
 
-      <section className="mt-8 grid gap-6 lg:grid-cols-[360px_1fr]">
-        <aside className="space-y-4">
+      <section className="mt-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="grid gap-3 lg:grid-cols-[1.4fr_1fr_1fr_1fr_auto]">
+          <input
+            name="q"
+            value={filters.q}
+            onChange={updateSearchFilter}
+            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold outline-none focus:border-slate-950 focus:bg-white"
+            placeholder="Search destination"
+          />
+          <select
+            name="category"
+            value={filters.category}
+            onChange={updateSearchFilter}
+            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold outline-none focus:border-slate-950 focus:bg-white"
+          >
+            <option value="all">All vibes</option>
+            <option value="peaceful">Peaceful</option>
+            <option value="adventure">Adventure</option>
+            <option value="trek">Trek</option>
+            <option value="party">Party</option>
+            <option value="luxury">Luxury</option>
+          </select>
+          <select
+            name="budget"
+            value={filters.budget}
+            onChange={updateSearchFilter}
+            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold outline-none focus:border-slate-950 focus:bg-white"
+          >
+            <option value="all">All budgets</option>
+            <option value="low">Low budget</option>
+            <option value="medium">Medium budget</option>
+            <option value="high">High budget</option>
+          </select>
+          <select
+            name="genderPreference"
+            value={filters.genderPreference}
+            onChange={updateSearchFilter}
+            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold outline-none focus:border-slate-950 focus:bg-white"
+          >
+            <option value="any">Any group</option>
+            <option value="male">Male preferred</option>
+            <option value="female">Female preferred</option>
+          </select>
+          <button
+            type="button"
+            onClick={loadTrips}
+            className="rounded-2xl bg-slate-950 px-5 py-3 text-sm font-black text-white transition hover:-translate-y-0.5 hover:bg-slate-800"
+          >
+            Search
+          </button>
+        </div>
+
+        <div className="mt-3 flex flex-wrap gap-3">
+          <label className="flex items-center gap-2 rounded-full bg-slate-50 px-4 py-2 text-sm font-bold text-slate-700">
+            <input
+              name="smokingAllowed"
+              type="checkbox"
+              checked={filters.smokingAllowed}
+              onChange={updateSearchFilter}
+              className="h-4 w-4 accent-slate-950"
+            />
+            Smoking allowed
+          </label>
+          <label className="flex items-center gap-2 rounded-full bg-slate-50 px-4 py-2 text-sm font-bold text-slate-700">
+            <input
+              name="drinkingAllowed"
+              type="checkbox"
+              checked={filters.drinkingAllowed}
+              onChange={updateSearchFilter}
+              className="h-4 w-4 accent-slate-950"
+            />
+            Drinking allowed
+          </label>
+        </div>
+      </section>
+
+      <section className="mt-6 grid items-start gap-6 lg:grid-cols-[360px_minmax(0,1fr)]">
+        <aside className="space-y-4 lg:sticky lg:top-24">
           <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
             <h2 className="text-lg font-black text-slate-950">Create trip</h2>
             <form
@@ -334,86 +412,23 @@ function TripsPage() {
             </form>
           </div>
 
-          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h2 className="text-lg font-black text-slate-950">Filters</h2>
-            <input
-              name="q"
-              value={filters.q}
-              onChange={updateSearchFilter}
-              className="mt-4 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold outline-none focus:border-slate-950"
-              placeholder="Search destination"
-            />
-            <select
-              name="category"
-              value={filters.category}
-              onChange={updateSearchFilter}
-              className="mt-3 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold outline-none focus:border-slate-950"
-            >
-              <option value="all">All vibes</option>
-              <option value="peaceful">Peaceful</option>
-              <option value="adventure">Adventure</option>
-              <option value="trek">Trek</option>
-              <option value="party">Party</option>
-              <option value="luxury">Luxury</option>
-            </select>
-            <select
-              name="budget"
-              value={filters.budget}
-              onChange={updateSearchFilter}
-              className="mt-3 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold outline-none focus:border-slate-950"
-            >
-              <option value="all">All budgets</option>
-              <option value="low">Low: Rs 100-800/day</option>
-              <option value="medium">Medium: Rs 800-3000/day</option>
-              <option value="high">High: Rs 3000+/day</option>
-            </select>
-            <select
-              name="genderPreference"
-              value={filters.genderPreference}
-              onChange={updateSearchFilter}
-              className="mt-3 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold outline-none focus:border-slate-950"
-            >
-              <option value="any">Any gender preference</option>
-              <option value="male">Male preferred</option>
-              <option value="female">Female preferred</option>
-            </select>
-            <div className="mt-3 grid gap-3">
-              <label className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
-                <span className="text-sm font-bold text-slate-700">
-                  Smoking allowed trips
-                </span>
-                <input
-                  name="smokingAllowed"
-                  type="checkbox"
-                  checked={filters.smokingAllowed}
-                  onChange={updateSearchFilter}
-                  className="h-5 w-5 accent-slate-950"
-                />
-              </label>
-              <label className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
-                <span className="text-sm font-bold text-slate-700">
-                  Drinking allowed trips
-                </span>
-                <input
-                  name="drinkingAllowed"
-                  type="checkbox"
-                  checked={filters.drinkingAllowed}
-                  onChange={updateSearchFilter}
-                  className="h-5 w-5 accent-slate-950"
-                />
-              </label>
-            </div>
-            <button
-              type="button"
-              onClick={loadTrips}
-              className="mt-4 w-full rounded-2xl bg-slate-950 px-5 py-3 text-sm font-black text-white transition hover:bg-slate-800"
-            >
-              Apply filters
-            </button>
-          </div>
         </aside>
 
-        <section>
+        <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+          <div className="mb-5 flex flex-col gap-3 border-b border-slate-100 pb-5 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">
+                Results
+              </p>
+              <h2 className="mt-1 text-2xl font-black text-slate-950">
+                Available trips
+              </h2>
+            </div>
+            <span className="w-fit rounded-full bg-slate-100 px-3 py-1 text-sm font-black text-slate-600">
+              {status.loading ? "Loading..." : `${visibleTrips.length} found`}
+            </span>
+          </div>
+
           {status.error && (
             <p className="mb-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700">
               {status.error}
@@ -426,7 +441,7 @@ function TripsPage() {
           )}
 
           {status.loading ? (
-            <div className="grid gap-5 md:grid-cols-2">
+            <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
               {[1, 2, 3, 4].map((item) => (
                 <div
                   key={item}
@@ -435,7 +450,7 @@ function TripsPage() {
               ))}
             </div>
           ) : visibleTrips.length ? (
-            <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+            <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
               {visibleTrips.map((trip) => (
                 <TripCard key={trip._id} trip={trip} />
               ))}

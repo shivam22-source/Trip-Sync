@@ -5,6 +5,7 @@ import { useParams } from "react-router-dom";
 import BalanceHero from "./BalanceHero";
 import ExpenseCard from "./ExpenseCard";
 import ExpenseModal from "./ExpenseModal";
+import SettlementSummary from "./SettlementSummary";
 import { api } from "../../services/api";
 
 const initialForm = {
@@ -57,19 +58,27 @@ function ExpenseDashboard({ tripId }) {
   const [form, setForm] = useState(initialForm);
   const [expenses, setExpenses] = useState([]);
   const [balance, setBalance] = useState({ owe: 0, owed: 0 });
+  const [settlements, setSettlements] = useState([]);
   const [status, setStatus] = useState({
     loading: true,
     saving: false,
+    settlingId: "",
     error: "",
+    success: "",
   });
+
+  function applyExpenseData(data) {
+    setBalance(data.balance || { owe: 0, owed: 0 });
+    setSettlements(data.settlements || []);
+    setExpenses((data.expenses || []).map(normalizeExpense));
+  }
 
   useEffect(() => {
     async function loadExpenses() {
       try {
         setStatus((current) => ({ ...current, loading: true, error: "" }));
         const data = await api.getExpenses(activeTripId);
-        setBalance(data.balance || { owe: 0, owed: 0 });
-        setExpenses((data.expenses || []).map(normalizeExpense));
+        applyExpenseData(data);
         setStatus((current) => ({ ...current, loading: false }));
       } catch (error) {
         setStatus((current) => ({
@@ -115,7 +124,7 @@ function ExpenseDashboard({ tripId }) {
     }
 
     try {
-      setStatus((current) => ({ ...current, saving: true, error: "" }));
+      setStatus((current) => ({ ...current, saving: true, error: "", success: "" }));
       const receiptImage = await readFileAsDataUrl(form.receipt);
 
       await api.createExpense(activeTripId, {
@@ -128,8 +137,7 @@ function ExpenseDashboard({ tripId }) {
       });
 
       const data = await api.getExpenses(activeTripId);
-      setBalance(data.balance || { owe: 0, owed: 0 });
-      setExpenses((data.expenses || []).map(normalizeExpense));
+      applyExpenseData(data);
       setForm(initialForm);
       setIsModalOpen(false);
       setStatus((current) => ({ ...current, saving: false }));
@@ -142,9 +150,55 @@ function ExpenseDashboard({ tripId }) {
     }
   }
 
+  async function handleSettlePayment(settlement) {
+    if (!activeTripId || activeTripId === "undefined") {
+      setStatus((current) => ({
+        ...current,
+        error: "Trip id missing. Please refresh this trip page.",
+      }));
+      return;
+    }
+
+    try {
+      setStatus((current) => ({
+        ...current,
+        settlingId: settlement.id,
+        error: "",
+        success: "",
+      }));
+      await api.settlePayment(activeTripId, {
+        from: settlement.from.userId,
+        to: settlement.to.userId,
+        amount: settlement.amount,
+      });
+      const data = await api.getExpenses(activeTripId);
+      applyExpenseData(data);
+      setStatus((current) => ({
+        ...current,
+        settlingId: "",
+        success: "Payment marked as settled.",
+      }));
+    } catch (error) {
+      setStatus((current) => ({
+        ...current,
+        settlingId: "",
+        error: error.message,
+      }));
+    }
+  }
+
   return (
     <div className="space-y-5">
-      <BalanceHero owe={balance.owe} owed={balance.owed} />
+      <BalanceHero
+        owe={balance.owe}
+        owed={balance.owed}
+      />
+
+      <SettlementSummary
+        settlements={settlements}
+        onSettle={handleSettlePayment}
+        settlingId={status.settlingId}
+      />
 
       <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
         <div className="flex flex-col gap-4 border-b border-slate-100 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
@@ -170,6 +224,11 @@ function ExpenseDashboard({ tripId }) {
         {status.error && (
           <p className="mx-5 mt-5 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm font-bold text-red-700 sm:mx-6">
             {status.error}
+          </p>
+        )}
+        {status.success && (
+          <p className="mx-5 mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-bold text-emerald-700 sm:mx-6">
+            {status.success}
           </p>
         )}
 

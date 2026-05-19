@@ -1,6 +1,9 @@
 const Expense = require("../models/Expense");
 const Member = require("../models/Member");
+const Notification = require("../models/Notification");
+const Settlement = require("../models/Settlement");
 const Trip = require("../models/Trip");
+const User = require("../models/User");
 const mongoose = require("mongoose");
 
 async function canAccessTripExpenses(tripId, userId) {
@@ -29,7 +32,135 @@ async function canAccessTripExpenses(tripId, userId) {
     : { allowed: false, reason: "Access denied" };
 }
 
-function calculateBalance(expenses, memberCount, userId) {
+function emitNotification(req, receiverId) {
+  req.app.get("io")?.to(receiverId.toString()).emit("notification:new");
+}
+
+function calculateRawBalances(expenses, members) {
+  const balances = new Map(
+    members.map((member) => [
+      member._id.toString(),
+      {
+        userId: member._id,
+        name: member.name || "Traveler",
+        balance: 0,
+      },
+    ])
+  );
+
+  expenses.forEach((expense) => {
+    if (!expense.splitEqually || members.length === 0) {
+      return;
+    }
+
+    const paidById = expense.paidBy._id.toString();
+    const share = expense.amount / members.length;
+
+    members.forEach((member) => {
+      const memberBalance = balances.get(member._id.toString());
+      memberBalance.balance -= share;
+    });
+
+    const payerBalance = balances.get(paidById);
+    if (payerBalance) {
+      payerBalance.balance += expense.amount;
+    }
+  });
+
+  return balances;
+}
+
+function applySettlementsToBalances(balances, settlements) {
+  settlements.forEach((settlement) => {
+    const fromBalance = balances.get(settlement.from.toString());
+    const toBalance = balances.get(settlement.to.toString());
+
+    if (fromBalance) {
+      fromBalance.balance += settlement.amount;
+    }
+
+    if (toBalance) {
+      toBalance.balance -= settlement.amount;
+    }
+  });
+}
+
+function calculateBalance(expenses, members, settlements, userId) {
+  const balances = calculateRawBalances(expenses, members);
+  applySettlementsToBalances(balances, settlements);
+  const userBalance = Math.round(balances.get(userId)?.balance || 0);
+
+  return {
+    owe: userBalance < 0 ? Math.abs(userBalance) : 0,
+    owed: userBalance > 0 ? userBalance : 0,
+  };
+}
+
+function calculateSettlementPlan(expenses, members, paidSettlements) {
+  const balances = calculateRawBalances(expenses, members);
+  applySettlementsToBalances(balances, paidSettlements);
+
+  const debtors = [];
+  const creditors = [];
+
+  balances.forEach((memberBalance) => {
+    const roundedBalance = Math.round(memberBalance.balance);
+
+    if (roundedBalance < 0) {
+      debtors.push({
+        ...memberBalance,
+        balance: Math.abs(roundedBalance),
+      });
+    }
+
+    if (roundedBalance > 0) {
+      creditors.push({
+        ...memberBalance,
+        balance: roundedBalance,
+      });
+    }
+  });
+
+  const settlements = [];
+  let debtorIndex = 0;
+  let creditorIndex = 0;
+
+  while (debtorIndex < debtors.length && creditorIndex < creditors.length) {
+    const debtor = debtors[debtorIndex];
+    const creditor = creditors[creditorIndex];
+    const amount = Math.min(debtor.balance, creditor.balance);
+
+    if (amount > 0) {
+      settlements.push({
+        id: `${debtor.userId}-${creditor.userId}`,
+        from: {
+          userId: debtor.userId,
+          name: debtor.name,
+        },
+        to: {
+          userId: creditor.userId,
+          name: creditor.name,
+        },
+        amount,
+      });
+    }
+
+    debtor.balance -= amount;
+    creditor.balance -= amount;
+
+    if (debtor.balance === 0) {
+      debtorIndex += 1;
+    }
+
+    if (creditor.balance === 0) {
+      creditorIndex += 1;
+    }
+  }
+
+  return settlements;
+}
+
+function calculateLegacyBalance(expenses, memberCount, userId) {
   return expenses.reduce(
     (balance, expense) => {
       if (!expense.splitEqually || memberCount === 0) {
@@ -71,15 +202,28 @@ const getTripExpenses = async (req, res) => {
     const expenses = await Expense.find({ tripId })
       .populate("paidBy", "name email")
       .sort({ createdAt: -1 });
+    const tripMembers = await User.find({
+      _id: { $in: access.trip.currentMembers },
+    }).select("name email");
 
-    const memberCount = Math.max(access.trip.currentMembers.length, 1);
-    const balance = calculateBalance(expenses, memberCount, userId);
+    const paidSettlements = await Settlement.find({ tripId });
+    const balance = calculateBalance(expenses, tripMembers, paidSettlements, userId);
+    const settlements = calculateSettlementPlan(
+      expenses,
+      tripMembers,
+      paidSettlements
+    ).filter(
+      (settlement) =>
+        settlement.from.userId.toString() === userId ||
+        settlement.to.userId.toString() === userId
+    );
 
     res.status(200).json({
       balance: {
         owe: Math.round(balance.owe),
         owed: Math.round(balance.owed),
       },
+      settlements,
       expenses,
     });
   } catch (error) {
@@ -132,6 +276,23 @@ const createTripExpense = async (req, res) => {
     });
 
     const populatedExpense = await expense.populate("paidBy", "name email");
+    const sender = await User.findById(userId).select("name");
+    const receivers = access.trip.currentMembers.filter(
+      (memberId) => memberId.toString() !== userId
+    );
+
+    if (receivers.length) {
+      await Notification.insertMany(
+        receivers.map((receiver) => ({
+          receiver,
+          sender: userId,
+          tripId,
+          type: "expense-added",
+          message: `${sender?.name || "A traveler"} added Rs ${Number(amount)} expense`,
+        }))
+      );
+      receivers.forEach((receiver) => emitNotification(req, receiver));
+    }
 
     res.status(201).json({
       message: "Expense added",
@@ -144,7 +305,81 @@ const createTripExpense = async (req, res) => {
   }
 };
 
+const settleTripPayment = async (req, res) => {
+  try {
+    const { tripId } = req.params;
+    const userId = req.user.id;
+    const { from, to, amount } = req.body;
+
+    const access = await canAccessTripExpenses(tripId, userId);
+
+    if (!access.allowed) {
+      const statusCode =
+        access.reason === "Trip not found" || access.reason === "Invalid trip id"
+          ? 404
+          : 403;
+      return res.status(statusCode).json({
+        message: access.reason,
+      });
+    }
+
+    if (!from || !to || !amount || Number(amount) <= 0) {
+      return res.status(400).json({
+        message: "Settlement details are required",
+      });
+    }
+
+    if (from !== userId && to !== userId) {
+      return res.status(403).json({
+        message: "You can only settle payments involving you",
+      });
+    }
+
+    const fromIsMember = access.trip.currentMembers.some(
+      (memberId) => memberId.toString() === from
+    );
+    const toIsMember = access.trip.currentMembers.some(
+      (memberId) => memberId.toString() === to
+    );
+
+    if (!fromIsMember || !toIsMember) {
+      return res.status(400).json({
+        message: "Settlement users must be trip members",
+      });
+    }
+
+    await Settlement.create({
+      tripId,
+      from,
+      to,
+      amount: Number(amount),
+      settledBy: userId,
+    });
+
+    const sender = await User.findById(userId).select("name");
+    const receiver = from === userId ? to : from;
+
+    await Notification.create({
+      receiver,
+      sender: userId,
+      tripId,
+      type: "payment-settled",
+      message: `${sender?.name || "A traveler"} settled Rs ${Number(amount)}`,
+    });
+    emitNotification(req, receiver);
+
+    res.status(200).json({
+      message: "Payment settled",
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
+    });
+  }
+};
+
 module.exports = {
   createTripExpense,
   getTripExpenses,
+  settleTripPayment,
 };

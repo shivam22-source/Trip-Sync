@@ -187,10 +187,14 @@ Implementation flow:
 ```txt
 User clicks Request to join
 Backend creates pending Member document
+Backend creates Notification for trip admin
+Backend emits notification:new to admin socket room
 Admin opens trip detail
 Frontend calls GET /api/trips/:tripId/requests
 Admin accepts or rejects request
 Backend updates Member status
+Backend creates accepted/rejected Notification for requester
+Backend emits notification:new to requester socket room
 Frontend refreshes trip state
 ```
 
@@ -233,6 +237,8 @@ The trip detail page includes a backend-connected expense splitter dashboard:
 - Balance hero with "You Owe", "You Are Owed", and net balance
 - Add expense modal with amount, description, category, receipt screenshot, and split equally toggle
 - Recent expenses list with category icon, payer, total amount, receipt name, and date
+- Personal settle-up plan that shows only payments involving the logged-in user
+- Per-transaction "Mark Paid" button
 - Trip-member access control for expense reads and writes
 
 Current implementation:
@@ -242,8 +248,10 @@ frontend/src/components/expenses/ExpenseDashboard.jsx
 frontend/src/components/expenses/BalanceHero.jsx
 frontend/src/components/expenses/ExpenseCard.jsx
 frontend/src/components/expenses/ExpenseModal.jsx
+frontend/src/components/expenses/SettlementSummary.jsx
 
 backend/src/models/Expense.js
+backend/src/models/Settlement.js
 backend/src/controllers/expense.controller.js
 backend/src/routes/expense.routes.js
 ```
@@ -253,6 +261,7 @@ API routes:
 ```txt
 GET  /api/expenses/:tripId
 POST /api/expenses/:tripId
+POST /api/expenses/:tripId/settle
 ```
 
 Expense fields:
@@ -268,7 +277,17 @@ receiptName
 receiptImage
 ```
 
-Only the trip admin and accepted trip members can view or add expenses. The frontend loads expenses with `GET /api/expenses/:tripId` and saves new expenses with `POST /api/expenses/:tripId`.
+Settlement fields:
+
+```txt
+tripId
+from
+to
+amount
+settledBy
+```
+
+Only the trip admin and accepted trip members can view or add expenses. The frontend loads expenses with `GET /api/expenses/:tripId`, saves new expenses with `POST /api/expenses/:tripId`, and marks one payment settled with `POST /api/expenses/:tripId/settle`.
 
 Receipt screenshot flow:
 
@@ -281,22 +300,114 @@ Future AI/OCR agent can read receiptImage and auto-fill amount, category, date, 
 
 For production, store receipt images in Cloudinary, S3, or another object store, then save only the hosted receipt URL in MongoDB.
 
-Suggested split logic:
+Equal split and settlement flow:
 
 ```txt
 expenseShare = expense.amount / acceptedMembers.length
 
-If current user paid:
-  user is owed expenseShare from every other member
+For each expense:
+  every member gets debited by expenseShare
+  payer gets credited by full expense amount
 
-If another member paid:
-  current user owes that payer expenseShare
+After all expenses:
+  positive balance = should receive money
+  negative balance = should pay money
 
-Net balance:
-  totalOwedToUser - totalUserOwes
+Backend matches debtors to creditors:
+  debtor pays creditor the minimum remaining amount
+
+Frontend only receives rows involving the logged-in user:
+  "You pay Shivam Rs 600"
+  "Rahul pays You Rs 400"
+
+When user clicks Mark Paid:
+  backend stores a Settlement document
+  backend subtracts that payment from future balances
+  backend emits payment-settled notification
+```
+
+Interview explanation:
+
+```txt
+I keep expenses immutable and store payments separately as settlements.
+The balance is calculated from expenses minus already-settled payments.
+This means marking a payment paid does not delete or edit the original expense history.
+Each user only sees settlement rows that involve them, so the UI stays personal and private.
 ```
 
 For unequal splits later, store participant shares per expense instead of using one equal share for every accepted member.
+
+### Notification Center
+
+Notifications cover:
+
+- join request sent to trip admin
+- request accepted sent to requester
+- request rejected sent to requester
+- expense added sent to other trip members
+- payment settled sent to the other person in that transaction
+
+Current implementation:
+
+```txt
+frontend/src/components/notifications/NotificationBell.jsx
+frontend/src/components/notifications/NotificationDropdown.jsx
+frontend/src/components/notifications/NotificationItem.jsx
+frontend/src/hooks/useNotifications.js
+frontend/src/services/notification.service.js
+
+backend/src/models/Notification.js
+backend/src/controllers/notification.controller.js
+backend/src/routes/notification.routes.js
+backend/src/sockets/chat.socket.js
+```
+
+API routes:
+
+```txt
+GET   /api/notifications
+PATCH /api/notifications/read-all
+PATCH /api/notifications/:notificationId/read
+```
+
+Notification fields:
+
+```txt
+receiver
+sender
+tripId
+type
+message
+isRead
+```
+
+Realtime notification flow:
+
+```txt
+Backend saves Notification in MongoDB
+Backend emits notification:new to receiver's private Socket.io room
+Frontend useNotifications hook receives notification:new
+Hook calls GET /api/notifications
+Bell badge and dropdown update from fresh API data
+```
+
+Important design choice:
+
+```txt
+REST is the source of truth.
+Socket.io is only a refresh signal.
+If a socket event is missed, the next API fetch still gives correct data.
+```
+
+Interview explanation:
+
+```txt
+I did not replace REST with sockets.
+When something happens, the backend writes the notification to MongoDB first.
+Then it emits notification:new to the receiver.
+The frontend listens for that event and refetches notifications using the same REST endpoint.
+This keeps realtime behavior simple and avoids duplicated notification state.
+```
 
 ## Frontend Architecture
 
@@ -551,4 +662,3 @@ Account B refreshes trip detail
 Chat unlocks for both accounts
 Both accounts send realtime messages
 ```
-

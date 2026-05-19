@@ -131,4 +131,10 @@ export const api = {
       method: "POST",
       body: JSON.stringify(payload),
     }),
+
+  settlePayment: (tripId, payload) =>
+    request(`/expenses/${tripId}/settle`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
 };

@@ -14,6 +14,8 @@ console.log(onlineUsers);
 
     console.log("Socket connected:", socket.id);
 
+    socket.join(socket.userId);
+
     // JOIN TRIP ROOM
     socket.on(
         "join-trip",

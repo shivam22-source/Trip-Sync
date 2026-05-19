@@ -1,4 +1,5 @@
 import { Link, NavLink, useNavigate } from "react-router-dom";
+import NotificationBell from "./notifications/NotificationBell";
 import { clearSession, getStoredUser, getToken } from "../services/api";
 
 function Navbar() {
@@ -55,6 +56,7 @@ function Navbar() {
               <span className="hidden text-sm font-semibold text-slate-600 sm:inline">
                 {user?.name || "Traveler"}
               </span>
+              <NotificationBell />
               <button
                 type="button"
                 onClick={handleLogout}

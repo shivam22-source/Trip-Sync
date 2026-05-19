@@ -1,12 +1,18 @@
 const Trip = require("../models/Trip");
 const Member = require("../models/Member");
 const Message =require("../models/Message");
+const Notification = require("../models/Notification");
+const User = require("../models/User");
 
 const budgetRanges = {
   low: { min: 100, max: 800 },
   medium: { min: 800, max: 3000 },
   high: { min: 3000, max: 10000 },
 };
+
+function emitNotification(req, receiverId) {
+  req.app.get("io")?.to(receiverId.toString()).emit("notification:new");
+}
 
 const createTrip = async (req, res) => {
   try {
@@ -229,6 +235,18 @@ if (trip.admin.toString() === userId) {
       status: "pending",
     });
 
+    const sender = await User.findById(req.user.id).select("name");
+
+    await Notification.create({
+      receiver: trip.admin,
+      sender: req.user.id,
+      tripId: trip._id,
+      type: "join-request",
+      message: `${sender?.name || "A traveler"} requested to join ${trip.title}`,
+    });
+    emitNotification(req, trip.admin);
+
+
     res.status(201).json({
       message: "Join request sent",
       memberRequest,
@@ -335,6 +353,15 @@ if (!alreadyExists) {
 
     await trip.save();
 
+    await Notification.create({
+      receiver: member.userId,
+      sender: req.user.id,
+      tripId: trip._id,
+      type: "request-accepted",
+      message: `Your request was accepted for ${trip.title}`,
+    });
+    emitNotification(req, member.userId);
+
     res.status(200).json({
       message: "Member accepted",
       member,
@@ -378,6 +405,15 @@ const rejectMember = async (req, res) => {
     member.status = "rejected";
 
     await member.save();
+
+    await Notification.create({
+      receiver: member.userId,
+      sender: req.user.id,
+      tripId: trip._id,
+      type: "request-rejected",
+      message: `Your request was rejected for ${trip.title}`,
+    });
+    emitNotification(req, member.userId);
 
     res.status(200).json({
       message: "Member rejected",
