@@ -1,6 +1,7 @@
 const express = require("express");
 
 const protect = require("../middleware/auth.middleware");
+const upload = require("../middleware/upload.middleware");
 
 const {
   createTrip,
@@ -16,7 +17,7 @@ const {
 
 const router = express.Router();
 
-router.post("/", protect, createTrip);
+router.post("/", protect, upload.single("coverImage"), createTrip);
 
 router.get("/", getTrips);
 

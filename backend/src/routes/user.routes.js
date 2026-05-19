@@ -1,9 +1,48 @@
 const express = require("express");
 
 const protect = require("../middleware/auth.middleware");
+const cloudinary = require("../config/cloudinary");
+const upload = require("../middleware/upload.middleware");
 const User = require("../models/User");
 
 const router = express.Router();
+
+function parseJsonField(value, fallback) {
+  if (!value) {
+    return fallback;
+  }
+
+  if (typeof value !== "string") {
+    return value;
+  }
+
+  try {
+    return JSON.parse(value);
+  } catch {
+    return fallback;
+  }
+}
+
+function uploadBufferToCloudinary(file, folder) {
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      {
+        folder,
+        resource_type: "image",
+      },
+      (error, result) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+
+        resolve(result);
+      }
+    );
+
+    stream.end(file.buffer);
+  });
+}
 
 router.get("/profile", protect, async (req, res) => {
   try {
@@ -26,7 +65,7 @@ router.get("/profile", protect, async (req, res) => {
   }
 });
 
-router.patch("/profile", protect, async (req, res) => {
+router.patch("/profile", protect, upload.single("profilePhoto"), async (req, res) => {
   try {
     const {
       name,
@@ -40,6 +79,18 @@ router.patch("/profile", protect, async (req, res) => {
       travelProfile = {},
       compatibility = {},
     } = req.body;
+    const parsedPreferences = parseJsonField(preferences, {});
+    const parsedTravelProfile = parseJsonField(travelProfile, {});
+    const parsedCompatibility = parseJsonField(compatibility, {});
+    let profilePhoto = "";
+
+    if (req.file) {
+      const uploadResult = await uploadBufferToCloudinary(
+        req.file,
+        "travel-buddy/profile-photos"
+      );
+      profilePhoto = uploadResult.secure_url;
+    }
 
     const updateData = {
       ...(name ? { name } : {}),
@@ -49,64 +100,65 @@ router.patch("/profile", protect, async (req, res) => {
       ...(typeof city === "string" ? { city } : {}),
       ...(typeof occupation === "string" ? { occupation } : {}),
       ...(typeof languages === "string" ? { languages } : {}),
-      ...(preferences.vibe ? { "preferences.vibe": preferences.vibe } : {}),
-      ...(preferences.budget ? { "preferences.budget": preferences.budget } : {}),
-      ...(typeof preferences.smoking === "boolean"
-        ? { "preferences.smoking": preferences.smoking }
+      ...(profilePhoto ? { profilePhoto } : {}),
+      ...(parsedPreferences.vibe ? { "preferences.vibe": parsedPreferences.vibe } : {}),
+      ...(parsedPreferences.budget ? { "preferences.budget": parsedPreferences.budget } : {}),
+      ...(typeof parsedPreferences.smoking === "boolean"
+        ? { "preferences.smoking": parsedPreferences.smoking }
         : {}),
-      ...(typeof preferences.drinking === "boolean"
-        ? { "preferences.drinking": preferences.drinking }
+      ...(typeof parsedPreferences.drinking === "boolean"
+        ? { "preferences.drinking": parsedPreferences.drinking }
         : {}),
-      ...(typeof travelProfile.travelStyle === "string"
-        ? { "travelProfile.travelStyle": travelProfile.travelStyle }
+      ...(typeof parsedTravelProfile.travelStyle === "string"
+        ? { "travelProfile.travelStyle": parsedTravelProfile.travelStyle }
         : {}),
-      ...(typeof travelProfile.groupRole === "string"
-        ? { "travelProfile.groupRole": travelProfile.groupRole }
+      ...(typeof parsedTravelProfile.groupRole === "string"
+        ? { "travelProfile.groupRole": parsedTravelProfile.groupRole }
         : {}),
-      ...(typeof travelProfile.pastTravel === "string"
-        ? { "travelProfile.pastTravel": travelProfile.pastTravel }
+      ...(typeof parsedTravelProfile.pastTravel === "string"
+        ? { "travelProfile.pastTravel": parsedTravelProfile.pastTravel }
         : {}),
-      ...(typeof travelProfile.currentLife === "string"
-        ? { "travelProfile.currentLife": travelProfile.currentLife }
+      ...(typeof parsedTravelProfile.currentLife === "string"
+        ? { "travelProfile.currentLife": parsedTravelProfile.currentLife }
         : {}),
-      ...(typeof travelProfile.whyTravel === "string"
-        ? { "travelProfile.whyTravel": travelProfile.whyTravel }
+      ...(typeof parsedTravelProfile.whyTravel === "string"
+        ? { "travelProfile.whyTravel": parsedTravelProfile.whyTravel }
         : {}),
-      ...(typeof travelProfile.favoriteThings === "string"
-        ? { "travelProfile.favoriteThings": travelProfile.favoriteThings }
+      ...(typeof parsedTravelProfile.favoriteThings === "string"
+        ? { "travelProfile.favoriteThings": parsedTravelProfile.favoriteThings }
         : {}),
-      ...(typeof travelProfile.boundaries === "string"
-        ? { "travelProfile.boundaries": travelProfile.boundaries }
+      ...(typeof parsedTravelProfile.boundaries === "string"
+        ? { "travelProfile.boundaries": parsedTravelProfile.boundaries }
         : {}),
-      ...(typeof compatibility.spendingBehavior === "string"
-        ? { "compatibility.spendingBehavior": compatibility.spendingBehavior }
+      ...(typeof parsedCompatibility.spendingBehavior === "string"
+        ? { "compatibility.spendingBehavior": parsedCompatibility.spendingBehavior }
         : {}),
-      ...(typeof compatibility.expenseSplit === "string"
-        ? { "compatibility.expenseSplit": compatibility.expenseSplit }
+      ...(typeof parsedCompatibility.expenseSplit === "string"
+        ? { "compatibility.expenseSplit": parsedCompatibility.expenseSplit }
         : {}),
-      ...(typeof compatibility.sleepSchedule === "string"
-        ? { "compatibility.sleepSchedule": compatibility.sleepSchedule }
+      ...(typeof parsedCompatibility.sleepSchedule === "string"
+        ? { "compatibility.sleepSchedule": parsedCompatibility.sleepSchedule }
         : {}),
-      ...(typeof compatibility.morningStyle === "string"
-        ? { "compatibility.morningStyle": compatibility.morningStyle }
+      ...(typeof parsedCompatibility.morningStyle === "string"
+        ? { "compatibility.morningStyle": parsedCompatibility.morningStyle }
         : {}),
-      ...(typeof compatibility.cleanliness === "string"
-        ? { "compatibility.cleanliness": compatibility.cleanliness }
+      ...(typeof parsedCompatibility.cleanliness === "string"
+        ? { "compatibility.cleanliness": parsedCompatibility.cleanliness }
         : {}),
-      ...(typeof compatibility.socialEnergy === "string"
-        ? { "compatibility.socialEnergy": compatibility.socialEnergy }
+      ...(typeof parsedCompatibility.socialEnergy === "string"
+        ? { "compatibility.socialEnergy": parsedCompatibility.socialEnergy }
         : {}),
-      ...(typeof compatibility.foodPreference === "string"
-        ? { "compatibility.foodPreference": compatibility.foodPreference }
+      ...(typeof parsedCompatibility.foodPreference === "string"
+        ? { "compatibility.foodPreference": parsedCompatibility.foodPreference }
         : {}),
-      ...(typeof compatibility.activityPreference === "string"
-        ? { "compatibility.activityPreference": compatibility.activityPreference }
+      ...(typeof parsedCompatibility.activityPreference === "string"
+        ? { "compatibility.activityPreference": parsedCompatibility.activityPreference }
         : {}),
-      ...(typeof compatibility.travelPace === "string"
-        ? { "compatibility.travelPace": compatibility.travelPace }
+      ...(typeof parsedCompatibility.travelPace === "string"
+        ? { "compatibility.travelPace": parsedCompatibility.travelPace }
         : {}),
-      ...(typeof compatibility.communicationStyle === "string"
-        ? { "compatibility.communicationStyle": compatibility.communicationStyle }
+      ...(typeof parsedCompatibility.communicationStyle === "string"
+        ? { "compatibility.communicationStyle": parsedCompatibility.communicationStyle }
         : {}),
     };
 

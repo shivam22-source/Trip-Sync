@@ -6,6 +6,9 @@ const Trip = require("../models/Trip");
 const User = require("../models/User");
 const mongoose = require("mongoose");
 
+const cloudinary =require("../config/cloudinary");
+const streamifier =require("streamifier");
+
 async function canAccessTripExpenses(tripId, userId) {
   if (!mongoose.Types.ObjectId.isValid(tripId)) {
     return { allowed: false, reason: "Invalid trip id" };
@@ -242,6 +245,7 @@ const createTripExpense = async (req, res) => {
       description,
       category = "Misc",
       splitEqually = true,
+      //both get data from cloudinary
       receiptName = "",
       receiptImage = "",
     } = req.body;
@@ -263,6 +267,49 @@ const createTripExpense = async (req, res) => {
         message: "Amount and description are required",
       });
     }
+ 
+
+if (req.file) {
+
+  const result =
+    await new Promise(
+      (resolve, reject) => {
+
+        const stream =
+          cloudinary.uploader.upload_stream(
+
+            {
+              folder:
+                "travel-buddy-expenses",
+            },
+
+            (error, result) => {
+
+              if (error) {
+
+                reject(error);
+
+              } else {
+
+                resolve(result);
+              }
+            }
+          );
+
+        streamifier
+          .createReadStream(
+            req.file.buffer
+          )
+          .pipe(stream);
+      }
+    );
+
+  receiptImage =
+    result.secure_url;
+
+  receiptName =
+    req.file.originalname;
+}
 
     const expense = await Expense.create({
       tripId,

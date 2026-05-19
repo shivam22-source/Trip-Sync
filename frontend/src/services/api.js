@@ -32,11 +32,12 @@ export function getStoredUser() {
 
 async function request(path, options = {}) {
   const token = getToken();
+  const isFormData = options.body instanceof FormData;
 
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
     headers: {
-      "Content-Type": "application/json",
+      ...(isFormData ? {} : { "Content-Type": "application/json" }),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options.headers,
     },
@@ -82,7 +83,7 @@ export const api = {
   updateProfile: (payload) =>
     request("/users/profile", {
       method: "PATCH",
-      body: JSON.stringify(payload),
+      body: payload instanceof FormData ? payload : JSON.stringify(payload),
     }),
 
   getTrips: (params) => request(`/trips${toQueryString(params)}`),
@@ -92,7 +93,7 @@ export const api = {
   createTrip: (payload) =>
     request("/trips", {
       method: "POST",
-      body: JSON.stringify(payload),
+      body: payload instanceof FormData ? payload : JSON.stringify(payload),
     }),
 
   joinTrip: (tripId) =>

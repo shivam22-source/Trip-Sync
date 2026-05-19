@@ -3,6 +3,36 @@ const Member = require("../models/Member");
 const Trip = require("../models/Trip");
 
 const onlineUsers = new Map();
+const tripPresence = new Map();
+
+async function emitTripPresence(io, tripId) {
+    const userIds = Array.from(tripPresence.get(tripId) || []);
+    const members = await Member.find({
+        tripId,
+        userId: { $in: userIds },
+        status: "accepted",
+    }).populate("userId", "name email");
+    const trip = await Trip.findById(tripId).populate("admin", "name email");
+    const onlineMembers = members.map((member) => ({
+        _id: member.userId._id,
+        name: member.userId.name,
+        email: member.userId.email,
+    }));
+
+    if (
+        trip &&
+        userIds.includes(trip.admin._id.toString()) &&
+        !onlineMembers.some((member) => member._id.toString() === trip.admin._id.toString())
+    ) {
+        onlineMembers.push({
+            _id: trip.admin._id,
+            name: trip.admin.name,
+            email: trip.admin.email,
+        });
+    }
+
+    io.to(tripId).emit("trip-presence", onlineMembers);
+}
 
 const registerChatHandlers = (io, socket) => {
     onlineUsers.set(
@@ -64,6 +94,14 @@ console.log(onlineUsers);
                 }
 
                 socket.join(tripId);
+                socket.currentTripId = tripId;
+
+                if (!tripPresence.has(tripId)) {
+                    tripPresence.set(tripId, new Set());
+                }
+
+                tripPresence.get(tripId).add(userId);
+                await emitTripPresence(io, tripId);
 
                 socket.emit(
                     "joined-trip",
@@ -142,7 +180,7 @@ console.log(onlineUsers);
 
             await message.populate(
                 "sender",
-                "name email"
+                "name email profilePhoto"
             );
 
             // SEND REALTIME
@@ -172,6 +210,17 @@ socket.on("typing", (data) => {
     // DISCONNECT
     socket.on("disconnect", () => {
         onlineUsers.delete(socket.userId);
+
+        if (socket.currentTripId && tripPresence.has(socket.currentTripId)) {
+            const users = tripPresence.get(socket.currentTripId);
+            users.delete(socket.userId);
+
+            if (!users.size) {
+                tripPresence.delete(socket.currentTripId);
+            } else {
+                emitTripPresence(io, socket.currentTripId).catch(console.log);
+            }
+        }
 
         console.log("User disconnected");
 

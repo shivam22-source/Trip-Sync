@@ -56,7 +56,7 @@ async (req, res) => {
       await Notification.find({
         receiver: req.user.id,
       })
-      .populate("sender", "name")
+      .populate("sender", "name profilePhoto")
       .populate("tripId", "title")
       .sort({ createdAt: -1 })
       .lean();

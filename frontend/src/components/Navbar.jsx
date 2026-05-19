@@ -56,6 +56,17 @@ function Navbar() {
               <span className="hidden text-sm font-semibold text-slate-600 sm:inline">
                 {user?.name || "Traveler"}
               </span>
+              <span className="grid h-9 w-9 place-items-center overflow-hidden rounded-full bg-slate-950 text-sm font-black text-white">
+                {user?.profilePhoto ? (
+                  <img
+                    src={user.profilePhoto}
+                    alt={user?.name || "Profile"}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  user?.name?.charAt(0)?.toUpperCase() || "T"
+                )}
+              </span>
               <NotificationBell />
               <button
                 type="button"

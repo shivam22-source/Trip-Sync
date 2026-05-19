@@ -43,7 +43,7 @@ const getTripMessages = async (req, res) => {
     const skip = (page - 1) * limit;
 
     const messages = await Message.find({ tripId })
-      .populate("sender", "name email")
+      .populate("sender", "name email profilePhoto")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);

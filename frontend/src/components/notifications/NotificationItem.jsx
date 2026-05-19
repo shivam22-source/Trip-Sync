@@ -33,7 +33,15 @@ function NotificationItem({ notification, actionId, onRespond }) {
     <article className="group border-b border-slate-100 p-4 transition hover:bg-slate-50 last:border-b-0">
       <div className="flex gap-3">
         <div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-slate-950 text-sm font-black text-white shadow-sm">
-          {getInitial(senderName)}
+          {notification.sender?.profilePhoto ? (
+            <img
+              src={notification.sender.profilePhoto}
+              alt={senderName}
+              className="h-full w-full rounded-2xl object-cover"
+            />
+          ) : (
+            getInitial(senderName)
+          )}
         </div>
 
         <div className="min-w-0 flex-1">

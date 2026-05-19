@@ -3,6 +3,8 @@ import { api, getToken, setSession } from "../services/api";
 
 const emptyForm = {
   name: "",
+  profilePhoto: "",
+  profilePhotoFile: null,
   bio: "",
   age: "",
   gender: "",
@@ -50,6 +52,8 @@ function ProfilePage() {
   function fillForm(user) {
     setForm({
       name: user?.name || "",
+      profilePhoto: user?.profilePhoto || "",
+      profilePhotoFile: null,
       bio: user?.bio || "",
       age: user?.age || "",
       gender: user?.gender || "",
@@ -106,7 +110,16 @@ function ProfilePage() {
   }, []);
 
   function updateField(event) {
-    const { name, value } = event.target;
+    const { files, name, type, value } = event.target;
+
+    if (type === "file") {
+      setForm((current) => ({
+        ...current,
+        profilePhotoFile: files?.[0] || null,
+      }));
+      return;
+    }
+
     setForm((current) => ({ ...current, [name]: value }));
   }
 
@@ -153,7 +166,23 @@ function ProfilePage() {
     }));
 
     try {
-      const data = await api.updateProfile(form);
+      const profileData = new FormData();
+      profileData.append("name", form.name);
+      profileData.append("bio", form.bio);
+      profileData.append("age", form.age);
+      profileData.append("gender", form.gender);
+      profileData.append("city", form.city);
+      profileData.append("occupation", form.occupation);
+      profileData.append("languages", form.languages);
+      profileData.append("preferences", JSON.stringify(form.preferences));
+      profileData.append("travelProfile", JSON.stringify(form.travelProfile));
+      profileData.append("compatibility", JSON.stringify(form.compatibility));
+
+      if (form.profilePhotoFile) {
+        profileData.append("profilePhoto", form.profilePhotoFile);
+      }
+
+      const data = await api.updateProfile(profileData);
       fillForm(data.user);
       setSession({ token: getToken(), user: data.user });
       setStatus((current) => ({
@@ -190,6 +219,36 @@ function ProfilePage() {
         <section className="space-y-6">
           <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
             <h2 className="text-xl font-black text-slate-950">Basic details</h2>
+            <div className="mt-5 flex flex-col gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:flex-row sm:items-center">
+              <div className="grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-3xl bg-slate-950 text-2xl font-black text-white">
+                {form.profilePhoto ? (
+                  <img
+                    src={form.profilePhoto}
+                    alt={form.name || "Profile"}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  form.name?.charAt(0)?.toUpperCase() || "T"
+                )}
+              </div>
+              <label className="block min-w-0 flex-1">
+                <span className="text-sm font-bold text-slate-700">
+                  Profile picture
+                </span>
+                <input
+                  name="profilePhoto"
+                  type="file"
+                  accept="image/*"
+                  onChange={updateField}
+                  className="mt-2 w-full text-sm font-semibold text-slate-600 file:mr-4 file:rounded-full file:border-0 file:bg-slate-950 file:px-4 file:py-2 file:text-sm file:font-black file:text-white"
+                />
+                {form.profilePhotoFile && (
+                  <p className="mt-2 truncate text-xs font-bold text-slate-500">
+                    Selected: {form.profilePhotoFile.name}
+                  </p>
+                )}
+              </label>
+            </div>
             <div className="mt-5 grid gap-4 sm:grid-cols-2">
               <label className="block">
                 <span className="text-sm font-bold text-slate-700">Name</span>

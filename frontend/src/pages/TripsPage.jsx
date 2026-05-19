@@ -17,6 +17,7 @@ const initialForm = {
     max: 3000,
   },
   maxMembers: 4,
+  coverImage: null,
   filters: {
     smokingAllowed: false,
     drinkingAllowed: false,
@@ -80,7 +81,16 @@ function TripsPage() {
   }, [loadTrips]);
 
   function updateForm(event) {
-    const { name, value } = event.target;
+    const { files, name, type, value } = event.target;
+
+    if (type === "file") {
+      setForm((current) => ({
+        ...current,
+        [name]: files?.[0] || null,
+      }));
+      return;
+    }
+
     setForm((current) => {
       if (name === "budget") {
         return {
@@ -118,14 +128,29 @@ function TripsPage() {
     setStatus((current) => ({ ...current, saving: true, error: "", success: "" }));
 
     try {
-      const data = await api.createTrip({
-        ...form,
-        maxMembers: Number(form.maxMembers),
-        budgetPerDay: {
+      const tripData = new FormData();
+      tripData.append("title", form.title);
+      tripData.append("destination", form.destination);
+      tripData.append("description", form.description);
+      tripData.append("startDate", form.startDate);
+      tripData.append("endDate", form.endDate);
+      tripData.append("category", form.category);
+      tripData.append("budget", form.budget);
+      tripData.append("maxMembers", Number(form.maxMembers));
+      tripData.append(
+        "budgetPerDay",
+        JSON.stringify({
           min: Number(form.budgetPerDay.min),
           max: Number(form.budgetPerDay.max),
-        },
-      });
+        })
+      );
+      tripData.append("filters", JSON.stringify(form.filters));
+
+      if (form.coverImage) {
+        tripData.append("coverImage", form.coverImage);
+      }
+
+      const data = await api.createTrip(tripData);
       setForm(initialForm);
       setStatus((current) => ({
         ...current,
@@ -284,6 +309,24 @@ function TripsPage() {
                     className="mt-2 w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold outline-none focus:border-slate-950 focus:bg-white"
                     placeholder="Short plan, vibe, and expectations"
                   />
+                </label>
+
+                <label className="block rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4">
+                  <span className="text-sm font-bold text-slate-700">
+                    Trip cover image
+                  </span>
+                  <input
+                    name="coverImage"
+                    type="file"
+                    accept="image/*"
+                    onChange={updateForm}
+                    className="mt-3 w-full text-sm font-semibold text-slate-600 file:mr-4 file:rounded-full file:border-0 file:bg-slate-950 file:px-4 file:py-2 file:text-sm file:font-black file:text-white"
+                  />
+                  {form.coverImage && (
+                    <p className="mt-2 truncate text-xs font-bold text-slate-500">
+                      Selected: {form.coverImage.name}
+                    </p>
+                  )}
                 </label>
 
                 <div className="grid grid-cols-2 gap-3">

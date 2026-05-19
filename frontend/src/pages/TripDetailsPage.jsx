@@ -244,6 +244,15 @@ function TripDetailsPage() {
       </Link>
 
       <section className="mt-5 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+        {trip.coverImage && (
+          <div className="h-64 overflow-hidden bg-slate-100 sm:h-80">
+            <img
+              src={trip.coverImage}
+              alt={trip.title}
+              className="h-full w-full object-cover"
+            />
+          </div>
+        )}
         <div className="grid lg:grid-cols-[1fr_380px]">
           <div className="p-6 sm:p-8">
             <div className="flex flex-wrap gap-2">

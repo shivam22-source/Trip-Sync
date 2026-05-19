@@ -8,6 +8,7 @@ function TripChat({ tripId, canChat }) {
   const socketRef = useRef(null);
   const [messages, setMessages] = useState([]);
   const [messageText, setMessageText] = useState("");
+  const [onlineMembers, setOnlineMembers] = useState([]);
   const [status, setStatus] = useState({
     loading: true,
     sending: false,
@@ -69,6 +70,10 @@ function TripChat({ tripId, canChat }) {
       setMessages((current) => [...current, message]);
     });
 
+    socket.on("trip-presence", (members) => {
+      setOnlineMembers(Array.isArray(members) ? members : []);
+    });
+
     socket.on("error-message", (message) => {
       setStatus((current) => ({ ...current, error: message }));
     });
@@ -120,8 +125,19 @@ function TripChat({ tripId, canChat }) {
         <div>
           <h2 className="text-xl font-black text-slate-950">Trip chat</h2>
           <p className="mt-1 text-sm font-semibold text-slate-500">
-            {status.connected ? "Realtime connected" : "Connecting socket..."}
+            {status.connected
+              ? `${onlineMembers.length || 1} online`
+              : "Connecting socket..."}
           </p>
+          {onlineMembers.length > 0 && (
+            <p className="mt-1 text-xs font-bold text-slate-400">
+              {onlineMembers
+                .map((member) =>
+                  member._id === user?._id ? "You" : member.name || "Traveler"
+                )
+                .join(", ")}
+            </p>
+          )}
         </div>
         <span
           className={`h-3 w-3 rounded-full ${

@@ -3,6 +3,7 @@ const Member = require("../models/Member");
 const Message =require("../models/Message");
 const Notification = require("../models/Notification");
 const User = require("../models/User");
+const cloudinary = require("../config/cloudinary");
 
 const budgetRanges = {
   low: { min: 100, max: 800 },
@@ -12,6 +13,43 @@ const budgetRanges = {
 
 function emitNotification(req, receiverId) {
   req.app.get("io")?.to(receiverId.toString()).emit("notification:new");
+}
+
+function parseJsonField(value, fallback) {
+  if (!value) {
+    return fallback;
+  }
+
+  if (typeof value !== "string") {
+    return value;
+  }
+
+  try {
+    return JSON.parse(value);
+  } catch {
+    return fallback;
+  }
+}
+
+function uploadBufferToCloudinary(file, folder) {
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      {
+        folder,
+        resource_type: "image",
+      },
+      (error, result) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+
+        resolve(result);
+      }
+    );
+
+    stream.end(file.buffer);
+  });
 }
 
 const createTrip = async (req, res) => {
@@ -28,6 +66,31 @@ const createTrip = async (req, res) => {
       maxMembers,
       filters,
     } = req.body;
+    const parsedBudgetPerDay = parseJsonField(budgetPerDay, null);
+    const parsedFilters = parseJsonField(filters, {});
+    const memberLimit = Number(maxMembers);
+    let coverImage = "";
+
+    if (
+      !title?.trim() ||
+      !destination?.trim() ||
+      !startDate ||
+      !endDate ||
+      !memberLimit ||
+      memberLimit < 2
+    ) {
+      return res.status(400).json({
+        message: "Please fill trip title, destination, dates, and at least 2 seats.",
+      });
+    }
+
+    if (req.file) {
+      const uploadResult = await uploadBufferToCloudinary(
+        req.file,
+        "travel-buddy/trip-covers"
+      );
+      coverImage = uploadResult.secure_url;
+    }
 
     const trip = await Trip.create({
       admin: req.user.id,
@@ -40,15 +103,16 @@ const createTrip = async (req, res) => {
       category,
       budget,
       budgetPerDay:
-        budgetPerDay?.min && budgetPerDay?.max
-          ? budgetPerDay
+        parsedBudgetPerDay?.min && parsedBudgetPerDay?.max
+          ? parsedBudgetPerDay
           : budgetRanges[budget] || budgetRanges.medium,
-      maxMembers,
+      maxMembers: memberLimit,
       filters: {
-        smokingAllowed: Boolean(filters?.smokingAllowed),
-        drinkingAllowed: Boolean(filters?.drinkingAllowed),
-        genderPreference: filters?.genderPreference || "any",
+        smokingAllowed: Boolean(parsedFilters?.smokingAllowed),
+        drinkingAllowed: Boolean(parsedFilters?.drinkingAllowed),
+        genderPreference: parsedFilters?.genderPreference || "any",
       },
+      coverImage,
 
       currentMembers: [req.user.id],
     });
