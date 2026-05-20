@@ -15,6 +15,8 @@ function emitNotification(req, receiverId) {
   req.app.get("io")?.to(receiverId.toString()).emit("notification:new");
 }
 
+// Multipart form fields arrive as strings. JSON fields like filters and
+// budgetPerDay are parsed here while plain JSON requests keep working too.
 function parseJsonField(value, fallback) {
   if (!value) {
     return fallback;
@@ -32,6 +34,7 @@ function parseJsonField(value, fallback) {
 }
 
 function uploadBufferToCloudinary(file, folder) {
+  // Multer stores the file in memory; this streams that buffer to Cloudinary.
   return new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
       {
@@ -85,6 +88,7 @@ const createTrip = async (req, res) => {
     }
 
     if (req.file) {
+      // Trip cover image is stored in Cloudinary; MongoDB stores only the URL.
       const uploadResult = await uploadBufferToCloudinary(
         req.file,
         "travel-buddy/trip-covers"
@@ -194,7 +198,7 @@ const getSingleTrip = async (req, res) => {
     }
       let isAllowedToSeeMembers = false;
 
-       // ADMIN CHECK
+       // Only admins and accepted members can see the full member list.
     if (
       req.user &&
       trip.admin._id.toString() === req.user.id
@@ -213,7 +217,7 @@ const getSingleTrip = async (req, res) => {
       isAllowedToSeeMembers = true;
     }
 
-     // HIDE MEMBERS IF NOT ALLOWED
+     // Guests/pending users can see the trip, but not private member details.
     let responseTrip = trip.toObject();  //trip ki id
 
     if (!isAllowedToSeeMembers) {
@@ -308,6 +312,7 @@ if (trip.admin.toString() === userId) {
       type: "join-request",
       message: `${sender?.name || "A traveler"} requested to join ${trip.title}`,
     });
+    // Socket only tells the admin to refresh notifications; REST stays source of truth.
     emitNotification(req, trip.admin);
 
 

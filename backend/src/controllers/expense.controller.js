@@ -39,6 +39,8 @@ function emitNotification(req, receiverId) {
   req.app.get("io")?.to(receiverId.toString()).emit("notification:new");
 }
 
+// First calculate every member's raw money position from expenses only.
+// Positive balance means the member should receive money; negative means pay.
 function calculateRawBalances(expenses, members) {
   const balances = new Map(
     members.map((member) => [
@@ -74,6 +76,8 @@ function calculateRawBalances(expenses, members) {
 }
 
 function applySettlementsToBalances(balances, settlements) {
+  // Settlements are stored separately from expenses, so original expense history
+  // stays immutable while paid amounts reduce the remaining balances.
   settlements.forEach((settlement) => {
     const fromBalance = balances.get(settlement.from.toString());
     const toBalance = balances.get(settlement.to.toString());
@@ -128,6 +132,7 @@ function calculateSettlementPlan(expenses, members, paidSettlements) {
   let debtorIndex = 0;
   let creditorIndex = 0;
 
+  // Match debtors to creditors with the smallest needed transfers.
   while (debtorIndex < debtors.length && creditorIndex < creditors.length) {
     const debtor = debtors[debtorIndex];
     const creditor = creditors[creditorIndex];
@@ -216,6 +221,7 @@ const getTripExpenses = async (req, res) => {
       tripMembers,
       paidSettlements
     ).filter(
+      // Privacy rule: each user only sees payments involving them.
       (settlement) =>
         settlement.from.userId.toString() === userId ||
         settlement.to.userId.toString() === userId
@@ -269,6 +275,8 @@ const createTripExpense = async (req, res) => {
     }
  
 
+// Receipt upload is optional. If present, store the image in Cloudinary and
+// keep only the URL/name in MongoDB so future AI extraction can read it.
 if (req.file) {
 
   const result =
@@ -403,6 +411,7 @@ const settleTripPayment = async (req, res) => {
       settledBy: userId,
     });
 
+    // Payment notification goes only to the other person in this transaction.
     const sender = await User.findById(userId).select("name");
     const receiver = from === userId ? to : from;
 

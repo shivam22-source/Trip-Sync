@@ -6,6 +6,8 @@ const onlineUsers = new Map();
 const tripPresence = new Map();
 
 async function emitTripPresence(io, tripId) {
+    // Presence is kept in memory for MVP. For multi-server deployment, move
+    // this data to Redis and use the Socket.io Redis adapter.
     const userIds = Array.from(tripPresence.get(tripId) || []);
     const members = await Member.find({
         tripId,
@@ -45,6 +47,7 @@ console.log(onlineUsers);
     console.log("Socket connected:", socket.id);
 
     socket.join(socket.userId);
+    // Private room for realtime notification refresh events.
 
     // JOIN TRIP ROOM
     socket.on(
@@ -96,6 +99,7 @@ console.log(onlineUsers);
                 socket.join(tripId);
                 socket.currentTripId = tripId;
 
+                // Track online members per trip room so the UI can show who is online.
                 if (!tripPresence.has(tripId)) {
                     tripPresence.set(tripId, new Set());
                 }

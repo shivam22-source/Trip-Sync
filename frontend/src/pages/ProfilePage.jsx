@@ -166,6 +166,8 @@ function ProfilePage() {
     }));
 
     try {
+      // Profile updates can include an optional photo. Text fields are sent as
+      // FormData strings, then backend parses nested JSON fields safely.
       const profileData = new FormData();
       profileData.append("name", form.name);
       profileData.append("bio", form.bio);

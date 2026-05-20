@@ -43,14 +43,14 @@ function LoginPage() {
     <main className="mx-auto grid min-h-[calc(100vh-96px)] max-w-7xl items-center gap-8 px-4 py-10 sm:px-6 lg:grid-cols-2 lg:px-8">
       <section className="hidden lg:block">
         <p className="text-sm font-black uppercase tracking-[0.2em] text-teal-700">
-          Secure access
+          Safe trip access
         </p>
         <h1 className="mt-4 text-5xl font-black leading-tight text-slate-950">
-          Start with auth, then unlock the trip workflow.
+          Sign in and start planning with your travel group.
         </h1>
         <p className="mt-5 max-w-xl text-lg leading-8 text-slate-600">
-          The backend returns a JWT token. The frontend stores it in
-          localStorage and sends it as a Bearer token for protected requests.
+          Keep your trips, join requests, group chats, and expenses connected in
+          one private space. Only accepted members can access the trip details.
         </p>
       </section>
 

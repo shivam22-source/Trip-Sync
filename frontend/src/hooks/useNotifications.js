@@ -52,6 +52,8 @@ function useNotifications({ enabled = true } = {}) {
       return undefined;
     }
 
+    // Realtime notifications use Socket.io only as a refresh signal. MongoDB +
+    // REST remain the source of truth, so missed socket events do not corrupt UI.
     const socket = io(SOCKET_URL, {
       auth: {
         token: getToken(),
@@ -107,6 +109,8 @@ function useNotifications({ enabled = true } = {}) {
     try {
       setActionId(notification._id);
       setError("");
+      // Accept/reject reuses the existing trip request APIs. After the action,
+      // we refetch notifications so stale pending buttons disappear.
       await respondToJoinRequest(notification, action);
       await markRead(notification._id);
       await refreshNotifications();

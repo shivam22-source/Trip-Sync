@@ -34,6 +34,8 @@ async function request(path, options = {}) {
   const token = getToken();
   const isFormData = options.body instanceof FormData;
 
+  // Most APIs send JSON. Upload flows send FormData, and the browser must set
+  // the multipart boundary itself, so we skip Content-Type for FormData.
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
     headers: {

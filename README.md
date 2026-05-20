@@ -13,6 +13,7 @@ Frontend:
 - Tailwind CSS
 - React Router
 - Socket.io Client
+- Cloudinary-backed image display
 
 Backend:
 
@@ -23,6 +24,8 @@ Backend:
 - JWT
 - bcryptjs
 - Socket.io
+- Multer
+- Cloudinary
 
 ## Project Structure
 
@@ -80,6 +83,7 @@ Protected routes check token before rendering
 - Update budget preference
 - Update smoking preference
 - Update drinking preference
+- Upload profile picture with Cloudinary
 
 Implementation flow:
 
@@ -88,8 +92,9 @@ Open /profile
 Frontend calls GET /api/users/profile
 Form is filled with existing user data
 User edits fields
-Frontend sends PATCH /api/users/profile
-Backend updates MongoDB
+If user selects profile picture, frontend sends multipart FormData
+Backend uploads profile picture to Cloudinary
+Backend stores profilePhoto URL in MongoDB
 Frontend refreshes profile state and localStorage user
 ```
 
@@ -102,6 +107,7 @@ Frontend refreshes profile state and localStorage user
 - Store trip category
 - Store per-person daily budget range
 - Store trip access filters
+- Upload trip cover image with Cloudinary
 
 Trip form fields:
 
@@ -113,6 +119,7 @@ Trip form fields:
 - category
 - budget
 - max members
+- cover image
 - smoking allowed
 - drinking allowed
 - gender preference
@@ -130,9 +137,20 @@ Implementation flow:
 ```txt
 User fills create trip form
 Frontend sends POST /api/trips
+If cover image exists, request uses multipart FormData
+Backend uploads image to Cloudinary
 Backend creates trip with current user as admin
+Backend stores Cloudinary coverImage URL
 Backend stores admin as first member
 Frontend navigates to /trips/:id
+```
+
+Image upload note:
+
+```txt
+Multipart/FormData is used only when a file enters the system.
+After Cloudinary returns a URL, MongoDB stores normal JSON-like fields.
+GET APIs still return JSON.
 ```
 
 ### Trip Search And Filters
@@ -214,6 +232,7 @@ Chat features:
 - receive realtime messages
 - own-message styling
 - auto-scroll to latest message
+- online member presence
 - disconnect socket on component cleanup
 
 Implementation flow:
@@ -228,6 +247,8 @@ Frontend emits send-message
 Backend saves message in MongoDB
 Backend emits receive-message to trip room
 Frontend appends message to state
+Backend emits trip-presence when members join/leave
+Frontend shows online count and online member names
 ```
 
 ### Expense Splitter
@@ -293,9 +314,9 @@ Receipt screenshot flow:
 
 ```txt
 User selects screenshot in Add Expense modal
-Frontend converts image to a base64 data URL
-Backend stores receiptName and receiptImage on the Expense document
-Future AI/OCR agent can read receiptImage and auto-fill amount, category, date, and description
+Frontend sends receipt metadata/image reference through expense flow
+Backend stores receiptName and receiptImage/receipt URL on the Expense document
+Future AI/OCR agent can read receipt image URL and auto-fill amount, category, date, and description
 ```
 
 For production, store receipt images in Cloudinary, S3, or another object store, then save only the hosted receipt URL in MongoDB.
@@ -409,6 +430,40 @@ The frontend listens for that event and refetches notifications using the same R
 This keeps realtime behavior simple and avoids duplicated notification state.
 ```
 
+### Cloudinary Media Uploads
+
+Cloudinary is used for user-facing images:
+
+- profile pictures
+- trip cover images
+- receipt images / receipt URLs for future AI extraction
+
+Current implementation:
+
+```txt
+backend/src/config/cloudinary.js
+backend/src/middleware/upload.middleware.js
+```
+
+Media upload flow:
+
+```txt
+Frontend sends multipart FormData
+Multer reads file into memory
+Backend uploads file buffer to Cloudinary
+Cloudinary returns secure_url
+Backend stores secure_url in MongoDB
+Frontend renders image from URL
+```
+
+Why this design:
+
+```txt
+MongoDB stores metadata and URLs, not large image files.
+Cloudinary handles image storage and delivery.
+The rest of the app continues to use JSON responses.
+```
+
 ## Frontend Architecture
 
 ### Routing
@@ -469,7 +524,7 @@ Reusable trip preview card.
 TripChat.jsx
 ```
 
-Realtime chat UI and socket lifecycle.
+Realtime chat UI, socket lifecycle, and online member presence.
 
 ```txt
 ProtectedRoute.jsx
@@ -501,11 +556,23 @@ User.js
 
 Stores user auth data and travel preferences.
 
+Also stores:
+
+```txt
+profilePhoto
+```
+
 ```txt
 Trip.js
 ```
 
 Stores trip details, admin, budget range, filters, status, and members.
+
+Also stores:
+
+```txt
+coverImage
+```
 
 ```txt
 Member.js
@@ -525,6 +592,24 @@ Message.js
 
 Stores trip chat messages.
 
+```txt
+Expense.js
+```
+
+Stores trip expenses, payer, amount, category, split mode, and receipt metadata.
+
+```txt
+Settlement.js
+```
+
+Stores per-transaction payments marked as paid.
+
+```txt
+Notification.js
+```
+
+Stores join request, approval, rejection, expense, and settlement notifications.
+
 ### Middleware
 
 ```txt
@@ -539,6 +624,12 @@ socket.middleware.js
 
 Checks JWT for Socket.io connections.
 
+```txt
+upload.middleware.js
+```
+
+Handles multipart image uploads with Multer memory storage.
+
 ## API Reference
 
 ### Auth
@@ -552,14 +643,14 @@ POST /api/auth/login
 
 ```txt
 GET   /api/users/profile
-PATCH /api/users/profile
+PATCH /api/users/profile  multipart supported for profilePhoto
 ```
 
 ### Trips
 
 ```txt
 GET    /api/trips
-POST   /api/trips
+POST   /api/trips  multipart supported for coverImage
 GET    /api/trips/:id
 POST   /api/trips/:id/join
 GET    /api/trips/:tripId/requests
@@ -573,6 +664,22 @@ DELETE /api/trips/:id
 ```txt
 GET   /api/messages/:tripId
 PATCH /api/messages/read/:tripId
+```
+
+### Expenses
+
+```txt
+GET  /api/expenses/:tripId
+POST /api/expenses/:tripId
+POST /api/expenses/:tripId/settle
+```
+
+### Notifications
+
+```txt
+GET   /api/notifications
+PATCH /api/notifications/read-all
+PATCH /api/notifications/:notificationId/read
 ```
 
 ## Socket Events
@@ -590,6 +697,8 @@ Server emits:
 ```txt
 joined-trip
 receive-message
+trip-presence
+notification:new
 user-typing
 error-message
 ```
@@ -602,6 +711,9 @@ Backend `.env`:
 PORT=5000
 MONGO_URI=your_mongodb_connection_string
 JWT_SECRET=your_jwt_secret
+CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name
+CLOUDINARY_API_KEY=your_cloudinary_api_key
+CLOUDINARY_API_SECRET=your_cloudinary_api_secret
 ```
 
 Frontend `.env`:
@@ -656,9 +768,17 @@ Suggested test flow:
 
 ```txt
 Account A creates a trip
+Account A uploads a trip cover image
 Account B requests to join
+Account A receives realtime notification
 Account A accepts Account B
-Account B refreshes trip detail
+Account B receives accepted notification
 Chat unlocks for both accounts
+Both accounts appear online in chat
 Both accounts send realtime messages
+One account adds expense
+Other account receives expense notification
+Settlement plan shows who needs to pay whom
+User marks one payment paid
+Balances update
 ```

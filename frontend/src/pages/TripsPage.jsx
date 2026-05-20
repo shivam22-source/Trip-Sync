@@ -128,6 +128,8 @@ function TripsPage() {
     setStatus((current) => ({ ...current, saving: true, error: "", success: "" }));
 
     try {
+      // Trip creation includes an optional image, so this one request uses
+      // FormData. The backend still saves normal fields + Cloudinary URL.
       const tripData = new FormData();
       tripData.append("title", form.title);
       tripData.append("destination", form.destination);

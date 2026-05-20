@@ -55,6 +55,7 @@ function TripChat({ tripId, canChat }) {
 
     socket.on("connect", () => {
       setStatus((current) => ({ ...current, connected: true, error: "" }));
+      // Joining the trip room unlocks realtime messages and presence updates.
       socket.emit("join-trip", { tripId, userId: user?._id });
     });
 
@@ -71,6 +72,7 @@ function TripChat({ tripId, canChat }) {
     });
 
     socket.on("trip-presence", (members) => {
+      // Backend sends currently online accepted members/admin for this trip.
       setOnlineMembers(Array.isArray(members) ? members : []);
     });
 
