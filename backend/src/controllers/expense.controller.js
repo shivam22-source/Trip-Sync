@@ -6,8 +6,8 @@ const Trip = require("../models/Trip");
 const User = require("../models/User");
 const mongoose = require("mongoose");
 
-const cloudinary =require("../config/cloudinary");
-const streamifier =require("streamifier");
+const cloudinary = require("../config/cloudinary");
+const streamifier = require("streamifier");
 
 async function canAccessTripExpenses(tripId, userId) {
   if (!mongoose.Types.ObjectId.isValid(tripId)) {
@@ -251,10 +251,9 @@ const createTripExpense = async (req, res) => {
       description,
       category = "Misc",
       splitEqually = true,
-      //both get data from cloudinary
-      receiptName = "",
-      receiptImage = "",
     } = req.body;
+    let receiptName = req.body.receiptName || "";
+    let receiptImage = req.body.receiptImage || "";
 
     const access = await canAccessTripExpenses(tripId, userId);
 
@@ -273,51 +272,31 @@ const createTripExpense = async (req, res) => {
         message: "Amount and description are required",
       });
     }
- 
-
-// Receipt upload is optional. If present, store the image in Cloudinary and
-// keep only the URL/name in MongoDB so future AI extraction can read it.
-if (req.file) {
-
-  const result =
-    await new Promise(
-      (resolve, reject) => {
-
-        const stream =
-          cloudinary.uploader.upload_stream(
-
-            {
-              folder:
-                "travel-buddy-expenses",
-            },
-
-            (error, result) => {
-
-              if (error) {
-
-                reject(error);
-
-              } else {
-
-                resolve(result);
-              }
+    // Receipt upload is optional. If present, store the image in Cloudinary and
+    // keep only the URL/name in MongoDB so future AI extraction can read it.
+    if (req.file) {
+      const result = await new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+          {
+            folder: "tripsync/expense-receipts",
+            resource_type: "image",
+          },
+          (error, result) => {
+            if (error) {
+              reject(error);
+              return;
             }
-          );
 
-        streamifier
-          .createReadStream(
-            req.file.buffer
-          )
-          .pipe(stream);
-      }
-    );
+            resolve(result);
+          }
+        );
 
-  receiptImage =
-    result.secure_url;
+        streamifier.createReadStream(req.file.buffer).pipe(stream);
+      });
 
-  receiptName =
-    req.file.originalname;
-}
+      receiptImage = result.secure_url;
+      receiptName = req.file.originalname;
+    }
 
     const expense = await Expense.create({
       tripId,

@@ -91,7 +91,7 @@ const createTrip = async (req, res) => {
       // Trip cover image is stored in Cloudinary; MongoDB stores only the URL.
       const uploadResult = await uploadBufferToCloudinary(
         req.file,
-        "travel-buddy/trip-covers"
+        "tripsync/trip-covers"
       );
       coverImage = uploadResult.secure_url;
     }

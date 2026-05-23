@@ -24,11 +24,11 @@ function Navbar() {
       <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
         <Link to="/" className="flex items-center gap-3">
           <span className="grid h-10 w-10 place-items-center rounded-2xl bg-slate-950 text-lg font-black text-white shadow-sm">
-            TB
+            TS
           </span>
           <div>
             <p className="text-base font-black leading-5 text-slate-950">
-              Travel Buddy
+              TripSync
             </p>
             <p className="hidden text-xs font-medium text-slate-500 sm:block">
               Find people. Plan better.

@@ -135,6 +135,7 @@ function TripDetailsPage() {
   const canChat = ["admin", "accepted"].includes(
     isAdmin ? "admin" : trip?.viewerRequestStatus
   );
+  const hasTripMemberAccess = isAdmin || trip?.viewerRequestStatus === "accepted";
 
   const loadTrip = useCallback(async () => {
     setStatus((current) => ({ ...current, loading: true, error: "" }));
@@ -440,7 +441,12 @@ function TripDetailsPage() {
 
         <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
           <h2 className="text-xl font-black text-slate-950">Accepted members</h2>
-          {trip.currentMembers?.length ? (
+          {!hasTripMemberAccess ? (
+            <p className="mt-3 text-sm leading-6 text-slate-600">
+              Member profiles are visible after the admin accepts your join
+              request.
+            </p>
+          ) : trip.currentMembers?.length ? (
             <div className="mt-5 space-y-3">
               {trip.currentMembers.map((member) => (
                 <div key={member._id} className="rounded-2xl bg-slate-50 p-4">
@@ -462,7 +468,22 @@ function TripDetailsPage() {
       </section>
 
       <section className="mt-6">
-        <ExpenseDashboard tripId={id} />
+        {hasTripMemberAccess ? (
+          <ExpenseDashboard tripId={id} />
+        ) : (
+          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+            <p className="text-xs font-black uppercase tracking-wide text-slate-400">
+              Expense splitter
+            </p>
+            <h2 className="mt-1 text-2xl font-black text-slate-950">
+              Expenses unlock after acceptance
+            </h2>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
+              Once the trip admin accepts your request, you can view balances,
+              add expenses, and settle payments with the group.
+            </p>
+          </div>
+        )}
       </section>
     </main>
   );

@@ -1,11 +1,11 @@
-# Travel Buddy Frontend Guide
+# TripSync Frontend Guide
 
 This guide explains the Phase 5 frontend in simple language so you can understand it, debug it, and explain it in an interview.
 
 Phase 5 goal:
 
 ```txt
-Make Travel Buddy feel like a real usable MVP, not only static React screens.
+Make TripSync feel like a real usable MVP, not only static React screens.
 ```
 
 ## Big Picture
@@ -113,7 +113,7 @@ user goes to /trips
 The token is saved with this key:
 
 ```txt
-travelBuddyToken
+tripSyncToken
 ```
 
 For protected backend APIs, the frontend sends:
@@ -444,7 +444,7 @@ http://localhost:5173
 Short answer:
 
 ```txt
-Travel Buddy is a full-stack trip collaboration MVP. Users can register, login, create trips, request to join trips, admins can approve or reject members, and accepted members can chat in realtime.
+TripSync is a full-stack trip collaboration MVP. Users can register, login, create trips, request to join trips, admins can approve or reject members, and accepted members can chat in realtime.
 ```
 
 Frontend answer:

@@ -36,20 +36,6 @@ function normalizeExpense(expense) {
   };
 }
 
-function readFileAsDataUrl(file) {
-  if (!file) {
-    return Promise.resolve("");
-  }
-
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = () => reject(new Error("Could not read receipt image"));
-    reader.readAsDataURL(file);
-  });
-}
-
 function ExpenseDashboard({ tripId }) {
   const { id: routeTripId } = useParams();
   const activeTripId =
@@ -125,16 +111,17 @@ function ExpenseDashboard({ tripId }) {
 
     try {
       setStatus((current) => ({ ...current, saving: true, error: "", success: "" }));
-      const receiptImage = await readFileAsDataUrl(form.receipt);
+      const expensePayload = new FormData();
+      expensePayload.append("amount", amount);
+      expensePayload.append("description", form.description.trim());
+      expensePayload.append("category", form.category);
+      expensePayload.append("splitEqually", String(form.splitEqually));
 
-      await api.createExpense(activeTripId, {
-        amount,
-        description: form.description.trim(),
-        category: form.category,
-        splitEqually: form.splitEqually,
-        receiptName: form.receipt?.name || "",
-        receiptImage,
-      });
+      if (form.receipt) {
+        expensePayload.append("receipt", form.receipt);
+      }
+
+      await api.createExpense(activeTripId, expensePayload);
 
       const data = await api.getExpenses(activeTripId);
       applyExpenseData(data);

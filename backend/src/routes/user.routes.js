@@ -87,7 +87,7 @@ router.patch("/profile", protect, upload.single("profilePhoto"), async (req, res
     if (req.file) {
       const uploadResult = await uploadBufferToCloudinary(
         req.file,
-        "travel-buddy/profile-photos"
+        "tripsync/profile-photos"
       );
       profilePhoto = uploadResult.secure_url;
     }

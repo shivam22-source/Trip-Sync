@@ -1,6 +1,6 @@
-# Travel Buddy
+# TripSync
 
-Travel Buddy is a full-stack MERN travel collaboration app where users can create group trips, request to join trips, chat with accepted members, split expenses, and receive realtime updates.
+TripSync is a full-stack MERN travel collaboration app where users can create group trips, request to join trips, chat with accepted members, split expenses, and receive realtime updates.
 
 It is built as a production-style learning project with authentication, protected trip access, Cloudinary media uploads, Socket.io realtime features, and a clean React + Tailwind frontend.
 
@@ -40,7 +40,7 @@ Backend:
 ## Project Structure
 
 ```txt
-Travel Buddy/
+TripSync/
   backend/
     src/
       config/
@@ -85,7 +85,7 @@ GET /api/trips?q=goa&budget=medium&smokingAllowed=true
 
 ### Join Request Workflow
 
-Travel Buddy uses an approval-based group model:
+TripSync uses an approval-based group model:
 
 ```txt
 User requests to join a trip
@@ -123,6 +123,19 @@ Each expense is stored as history
 Each settlement is stored separately
 Balance = expenses - settled payments
 ```
+
+Settlement algorithm:
+
+```txt
+1. Convert all expenses into one net balance per member
+2. Negative balance means the member owes money
+3. Positive balance means the member should receive money
+4. Keep one pointer on debtors and one pointer on creditors
+5. Match the current debtor with the current creditor
+6. Move the pointer when that person's remaining balance becomes zero
+```
+
+This two-pointer debtor-creditor matching avoids creating unnecessary pairwise payments between every member. The result is a smaller and cleaner settlement plan.
 
 This avoids deleting or rewriting original expenses when someone marks a payment as paid.
 
@@ -307,7 +320,7 @@ Balances update
 
 ## Interview Summary
 
-Travel Buddy is not just a CRUD app. It combines authenticated access, group approval, realtime chat, realtime notifications, Cloudinary uploads, and expense settlement logic.
+TripSync is not just a CRUD app. It combines authenticated access, group approval, realtime chat, realtime notifications, Cloudinary uploads, and expense settlement logic.
 
 The key architecture idea is simple:
 

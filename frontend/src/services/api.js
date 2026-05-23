@@ -1,23 +1,42 @@
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 export const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || "http://localhost:5000";
-const TOKEN_KEY = "travelBuddyToken";
+const TOKEN_KEY = "tripSyncToken";
+const USER_KEY = "tripSyncUser";
+const LEGACY_TOKEN_KEY = "travelBuddyToken";
+const LEGACY_USER_KEY = "travelBuddyUser";
 
 export function getToken() {
-  return localStorage.getItem(TOKEN_KEY);
+  const token = localStorage.getItem(TOKEN_KEY);
+
+  if (token) {
+    return token;
+  }
+
+  const legacyToken = localStorage.getItem(LEGACY_TOKEN_KEY);
+  if (legacyToken) {
+    localStorage.setItem(TOKEN_KEY, legacyToken);
+  }
+
+  return legacyToken;
 }
 
 export function setSession({ token, user }) {
   localStorage.setItem(TOKEN_KEY, token);
-  localStorage.setItem("travelBuddyUser", JSON.stringify(user));
+  localStorage.setItem(USER_KEY, JSON.stringify(user));
+  localStorage.removeItem(LEGACY_TOKEN_KEY);
+  localStorage.removeItem(LEGACY_USER_KEY);
 }
 
 export function clearSession() {
   localStorage.removeItem(TOKEN_KEY);
-  localStorage.removeItem("travelBuddyUser");
+  localStorage.removeItem(USER_KEY);
+  localStorage.removeItem(LEGACY_TOKEN_KEY);
+  localStorage.removeItem(LEGACY_USER_KEY);
 }
 
 export function getStoredUser() {
-  const rawUser = localStorage.getItem("travelBuddyUser");
+  const rawUser =
+    localStorage.getItem(USER_KEY) || localStorage.getItem(LEGACY_USER_KEY);
 
   if (!rawUser) {
     return null;
@@ -132,7 +151,7 @@ export const api = {
   createExpense: (tripId, payload) =>
     request(`/expenses/${tripId}`, {
       method: "POST",
-      body: JSON.stringify(payload),
+      body: payload instanceof FormData ? payload : JSON.stringify(payload),
     }),
 
   settlePayment: (tripId, payload) =>
