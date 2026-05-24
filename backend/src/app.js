@@ -1,7 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
-const { allowedOrigins } = require("./config/cors");
+const { corsOptions } = require("./config/cors");
 
 const app = express();
 const authRoutes = require("./routes/authRoutes");
@@ -11,10 +11,7 @@ const messageRoutes = require("./routes/message.routes");
 const expenseRoutes = require("./routes/expense.routes");
 const notificationRoutes = require("./routes/notification.routes");
 
-app.use(cors({
-    origin: allowedOrigins,
-    credentials: true,
-}));
+app.use(cors(corsOptions));
 
 app.use(express.json({ limit: "5mb" }));
 
