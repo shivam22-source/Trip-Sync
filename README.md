@@ -33,6 +33,7 @@ Backend:
 - Mongoose
 - JWT
 - bcryptjs
+- Joi
 - Socket.io
 - Multer
 - Cloudinary
@@ -173,6 +174,34 @@ Multer reads the file
 Backend uploads it to Cloudinary
 Cloudinary returns a secure URL
 MongoDB stores the URL, not the image file
+```
+
+### Request Validation
+
+Joi validation is used only on critical write endpoints, so invalid data is rejected before it reaches controller logic.
+
+Validated flows:
+
+- register
+- login
+- create trip
+- add expense
+- settle payment
+
+Implementation:
+
+```txt
+Route receives request
+Joi schema validates req.body
+Invalid data returns 400 with a clear message
+Valid data continues to the controller
+```
+
+Current files:
+
+```txt
+backend/src/middleware/validate.middleware.js
+backend/src/validations/request.schemas.js
 ```
 
 ## Important API Routes
