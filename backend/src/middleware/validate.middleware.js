@@ -1,20 +1,14 @@
-function validate(schema, property = "body") {
+module.exports = (schema) => {
   return (req, res, next) => {
-    const { error, value } = schema.validate(req[property], {
-      abortEarly: false,
-      stripUnknown: true,
-      convert: true,
-    });
+    const { error, value } = schema.validate(req.body);
 
     if (error) {
       return res.status(400).json({
-        message: error.details.map((detail) => detail.message).join(", "),
+        message: error.details[0].message,
       });
     }
 
-    req[property] = value;
+    req.body = value;
     next();
   };
-}
-
-module.exports = validate;
+};
