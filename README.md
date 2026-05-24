@@ -24,6 +24,8 @@ Frontend:
 - Tailwind CSS
 - React Router
 - Socket.io Client
+- Vercel Analytics
+- Vercel Speed Insights
 
 Backend:
 
@@ -202,6 +204,23 @@ Current files:
 ```txt
 backend/src/middleware/validate.middleware.js
 backend/src/validations/request.schemas.js
+```
+
+### Deployment Analytics
+
+The frontend includes Vercel Analytics and Speed Insights to track production usage and performance after deployment.
+
+Tracked from Vercel dashboard:
+
+- visitors and page views
+- online/recent traffic
+- route-level usage
+- frontend performance signals
+
+Implementation:
+
+```txt
+frontend/src/main.jsx
 ```
 
 ## Important API Routes
