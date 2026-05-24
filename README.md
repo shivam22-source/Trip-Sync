@@ -25,7 +25,6 @@ Frontend:
 - React Router
 - Socket.io Client
 - Vercel Analytics
-- Vercel Speed Insights
 
 Backend:
 
@@ -208,14 +207,13 @@ backend/src/validations/request.schemas.js
 
 ### Deployment Analytics
 
-The frontend includes Vercel Analytics and Speed Insights to track production usage and performance after deployment.
+The frontend includes Vercel Analytics to track production usage after deployment.
 
 Tracked from Vercel dashboard:
 
 - visitors and page views
 - online/recent traffic
 - route-level usage
-- frontend performance signals
 
 Implementation:
 
