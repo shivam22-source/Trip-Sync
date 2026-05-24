@@ -1,4 +1,9 @@
 const express = require("express");
+const validate = require("../middleware/validate.middleware");
+const {
+  loginSchema,
+  registerSchema,
+} = require("../validations/request.schemas");
 
 const {
   registerUser,
@@ -7,8 +12,8 @@ const {
 
 const router = express.Router();
 
-router.post("/register", registerUser);
+router.post("/register", validate(registerSchema), registerUser);
 
-router.post("/login", loginUser);
+router.post("/login", validate(loginSchema), loginUser);
 
 module.exports = router;

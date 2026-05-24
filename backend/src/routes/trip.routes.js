@@ -2,6 +2,8 @@ const express = require("express");
 
 const protect = require("../middleware/auth.middleware");
 const upload = require("../middleware/upload.middleware");
+const validate = require("../middleware/validate.middleware");
+const { createTripSchema } = require("../validations/request.schemas");
 
 const {
   createTrip,
@@ -17,7 +19,7 @@ const {
 
 const router = express.Router();
 
-router.post("/", protect, upload.single("coverImage"), createTrip);
+router.post("/", protect, upload.single("coverImage"), validate(createTripSchema), createTrip);
 
 router.get("/", getTrips);
 
