@@ -22,8 +22,6 @@ const socketAuthMiddleware = require("./middleware/socket.middleware");
 const io = new Server(server, {
   cors: {
     origin: allowedOrigins,
-    methods: ["GET", "POST"],
-    allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
   },
 });
