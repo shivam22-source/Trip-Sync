@@ -18,9 +18,15 @@ const registerChatHandlers =require("./sockets/chat.socket");
 
 const socketAuthMiddleware = require("./middleware/socket.middleware");
 
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://trip-sync-smoky.vercel.app"
+];
+
 const io = new Server(server, {
   cors: {
-    origin: "*",
+    origin: allowedOrigins,
+    credentials: true,
   },
 });
 

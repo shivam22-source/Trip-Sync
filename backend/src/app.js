@@ -10,7 +10,19 @@ const messageRoutes = require("./routes/message.routes");
 const expenseRoutes = require("./routes/expense.routes");
 const notificationRoutes = require("./routes/notification.routes");
 
-app.use(cors());
+
+const allowedOrigins = [
+    "http://localhost:5173",
+    "https://trip-sync-smoky.vercel.app"
+];
+
+app.use(cors({
+
+    origin: allowedOrigins,
+    credentials: true,
+
+})
+);
 
 app.use(express.json({ limit: "5mb" }));
 
