@@ -318,7 +318,7 @@ User marks one payment as paid
 Balances update
 ```
 
-## Interview Summary
+## Architecture Decisions
 
 TripSync is not just a CRUD app. It combines authenticated access, group approval, realtime chat, realtime notifications, Cloudinary uploads, and expense settlement logic.
 
