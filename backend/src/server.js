@@ -7,6 +7,7 @@ const http = require("http");
 const { Server } = require("socket.io");
 
 const app = require("./app");
+const { allowedOrigins } = require("./config/cors");
 
 const PORT = process.env.PORT || 5000;
 
@@ -17,11 +18,6 @@ const server = http.createServer(app);
 const registerChatHandlers =require("./sockets/chat.socket");
 
 const socketAuthMiddleware = require("./middleware/socket.middleware");
-
-const allowedOrigins = [
-  "http://localhost:5173",
-  "https://trip-sync-smoky.vercel.app"
-];
 
 const io = new Server(server, {
   cors: {
