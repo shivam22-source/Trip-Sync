@@ -41,10 +41,18 @@ const settlePaymentSchema = Joi.object({
   amount: Joi.number().positive().required(),
 });
 
+const aiTripPlanSchema = Joi.object({
+  destination: Joi.string().trim().min(2).max(80).required(),
+  days: Joi.number().integer().min(1).max(14).required(),
+  budget: Joi.number().positive().required(),
+  style: Joi.string().trim().max(40).default("peaceful"),
+});
+
 module.exports = {
   registerSchema,
   loginSchema,
   createTripSchema,
   createExpenseSchema,
   settlePaymentSchema,
+  aiTripPlanSchema,
 };

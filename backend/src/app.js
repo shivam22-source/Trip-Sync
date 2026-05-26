@@ -10,6 +10,7 @@ const tripRoutes = require("./routes/trip.routes");
 const messageRoutes = require("./routes/message.routes");
 const expenseRoutes = require("./routes/expense.routes");
 const notificationRoutes = require("./routes/notification.routes");
+const aiRoutes = require("./routes/ai.routes");
 
 app.use(cors({
     origin: allowedOrigins,
@@ -26,6 +27,7 @@ app.use("/api/trips", tripRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/api/expenses", expenseRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/ai", aiRoutes);
 app.get("/", (req, res) => {
     res.send("API Running");
 });
