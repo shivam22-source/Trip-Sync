@@ -25,7 +25,7 @@ const generateTripPlan = async (req, res) => {
     const { destination, days, budget, style } = req.body;
 
     const model = genAI.getGenerativeModel({
-      model: process.env.GEMINI_MODEL || "gemini-1.5-flash",
+      model: process.env.GEMINI_MODEL,
       generationConfig: {
         temperature: 0.7,
         responseMimeType: "application/json",

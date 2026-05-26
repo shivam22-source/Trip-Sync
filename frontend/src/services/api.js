@@ -161,7 +161,7 @@ export const api = {
     }),
 
   generateTripPlan: (payload) =>
-    request("/ai/plan/trip", {
+    request("/ai/plan-trip", {
       method: "POST",
       body: JSON.stringify(payload),
     }),
