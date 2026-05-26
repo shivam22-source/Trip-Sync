@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import ExpenseDashboard from "../components/expenses/ExpenseDashboard";
+import TripAiPlanner from "../components/TripAiPlanner";
 import TripChat from "../components/TripChat";
 import { api, getStoredUser, getToken } from "../services/api";
 
@@ -385,6 +386,8 @@ function TripDetailsPage() {
           </aside>
         </div>
       </section>
+
+      <TripAiPlanner trip={trip} />
 
       <section className="mt-6 grid gap-6 lg:grid-cols-2">
         <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
