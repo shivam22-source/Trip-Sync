@@ -387,7 +387,15 @@ function TripDetailsPage() {
         </div>
       </section>
 
-      <TripAiPlanner trip={trip} />
+      {hasTripMemberAccess && (
+        <TripAiPlanner
+          trip={trip}
+          isAdmin={isAdmin}
+          onPlanSaved={(aiItinerary) =>
+            setTrip((current) => ({ ...current, aiItinerary }))
+          }
+        />
+      )}
 
       <section className="mt-6 grid gap-6 lg:grid-cols-2">
         <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">

@@ -98,6 +98,26 @@ const tripSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+
+    aiItinerary: {
+      plan: {
+        type: mongoose.Schema.Types.Mixed,
+        default: null,
+      },
+      style: {
+        type: String,
+        default: "",
+      },
+      generatedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        default: null,
+      },
+      generatedAt: {
+        type: Date,
+        default: null,
+      },
+    },
   },
   {
     timestamps: true,

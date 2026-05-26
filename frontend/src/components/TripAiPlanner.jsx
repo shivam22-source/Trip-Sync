@@ -19,13 +19,13 @@ function getTripBudget(trip, days) {
   return Math.round(dailyBudget * days);
 }
 
-function TripAiPlanner({ trip }) {
+function TripAiPlanner({ trip, isAdmin, onPlanSaved }) {
   const days = useMemo(
     () => getTripDays(trip?.startDate, trip?.endDate),
     [trip?.endDate, trip?.startDate]
   );
   const [style, setStyle] = useState(trip?.category || "peaceful");
-  const [plan, setPlan] = useState(null);
+  const [plan, setPlan] = useState(trip?.aiItinerary?.plan || null);
   const [status, setStatus] = useState({
     loading: false,
     error: "",
@@ -36,6 +36,7 @@ function TripAiPlanner({ trip }) {
 
     try {
       const data = await api.generateTripPlan({
+        tripId: trip._id,
         destination: trip.destination,
         days,
         budget: getTripBudget(trip, days),
@@ -43,6 +44,7 @@ function TripAiPlanner({ trip }) {
       });
 
       setPlan(data.tripPlan);
+      onPlanSaved?.(data.aiItinerary);
       setStatus({ loading: false, error: "" });
     } catch (error) {
       setStatus({ loading: false, error: error.message });
@@ -57,38 +59,44 @@ function TripAiPlanner({ trip }) {
             AI itinerary
           </p>
           <h2 className="mt-1 text-2xl font-black text-slate-950">
-            Generate a simple trip plan
+            Shared trip itinerary
           </h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-            Uses this trip&apos;s destination, dates, and budget to suggest a
-            day-wise itinerary.
+            The trip admin can generate or update this plan. Accepted members
+            can view the same saved itinerary.
           </p>
         </div>
 
-        <div className="flex flex-col gap-3 sm:w-72">
-          <select
-            value={style}
-            onChange={(event) => setStyle(event.target.value)}
-            className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold capitalize outline-none focus:border-slate-950"
-          >
-            <option value="peaceful">Peaceful</option>
-            <option value="adventure">Adventure</option>
-            <option value="trek">Trek</option>
-            <option value="party">Party</option>
-            <option value="luxury">Luxury</option>
-            <option value="budget">Budget</option>
-            <option value="family">Family</option>
-          </select>
-          <button
-            type="button"
-            onClick={handleGeneratePlan}
-            disabled={status.loading}
-            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-950 px-5 py-3 text-sm font-black text-white transition hover:-translate-y-0.5 disabled:opacity-60"
-          >
-            <Sparkles size={18} />
-            {status.loading ? "Generating..." : "Generate plan"}
-          </button>
-        </div>
+        {isAdmin && (
+          <div className="flex flex-col gap-3 sm:w-72">
+            <select
+              value={style}
+              onChange={(event) => setStyle(event.target.value)}
+              className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold capitalize outline-none focus:border-slate-950"
+            >
+              <option value="peaceful">Peaceful</option>
+              <option value="adventure">Adventure</option>
+              <option value="trek">Trek</option>
+              <option value="party">Party</option>
+              <option value="luxury">Luxury</option>
+              <option value="budget">Budget</option>
+              <option value="family">Family</option>
+            </select>
+            <button
+              type="button"
+              onClick={handleGeneratePlan}
+              disabled={status.loading}
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-950 px-5 py-3 text-sm font-black text-white transition hover:-translate-y-0.5 disabled:opacity-60"
+            >
+              <Sparkles size={18} />
+              {status.loading
+                ? "Generating..."
+                : plan
+                  ? "Regenerate plan"
+                  : "Generate plan"}
+            </button>
+          </div>
+        )}
       </div>
 
       {status.error && (
@@ -156,7 +164,9 @@ function TripAiPlanner({ trip }) {
         </div>
       ) : (
         <div className="p-5 text-sm font-semibold text-slate-500 sm:p-6">
-          No AI plan generated yet.
+          {isAdmin
+            ? "No itinerary generated yet."
+            : "The trip admin has not generated an itinerary yet."}
         </div>
       )}
     </section>

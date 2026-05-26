@@ -222,6 +222,7 @@ const getSingleTrip = async (req, res) => {
 
     if (!isAllowedToSeeMembers) {
       responseTrip.currentMembers = [];
+      responseTrip.aiItinerary = null;
     }
 
     responseTrip.viewerRole = "guest";

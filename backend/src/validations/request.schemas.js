@@ -42,6 +42,7 @@ const settlePaymentSchema = Joi.object({
 });
 
 const aiTripPlanSchema = Joi.object({
+  tripId: Joi.string().hex().length(24).required(),
   destination: Joi.string().trim().min(2).max(80).required(),
   days: Joi.number().integer().min(1).max(14).required(),
   budget: Joi.number().positive().required(),

@@ -1,4 +1,5 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
+const Trip = require("../models/Trip");
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
@@ -22,7 +23,22 @@ const generateTripPlan = async (req, res) => {
       });
     }
 
-    const { destination, days, budget, style } = req.body;
+    const { tripId, destination, days, budget, style } = req.body;
+    const trip = await Trip.findById(tripId);
+
+    if (!trip) {
+      return res.status(404).json({
+        success: false,
+        message: "Trip not found",
+      });
+    }
+
+    if (trip.admin.toString() !== req.user.id) {
+      return res.status(403).json({
+        success: false,
+        message: "Only the trip admin can generate or update itinerary",
+      });
+    }
 
     const model = genAI.getGenerativeModel({
       model: process.env.GEMINI_MODEL,
@@ -70,9 +86,18 @@ Return only valid JSON in this exact shape:
 
     const tripPlan = parseGeminiJson(content);
 
+    trip.aiItinerary = {
+      plan: tripPlan,
+      style,
+      generatedBy: req.user.id,
+      generatedAt: new Date(),
+    };
+    await trip.save();
+
     res.status(200).json({
       success: true,
       tripPlan,
+      aiItinerary: trip.aiItinerary,
     });
   } catch (error) {
     console.error("AI TRIP ERROR:", error);
