@@ -97,7 +97,11 @@ function ExpenseDashboard({ tripId }) {
     event.preventDefault();
 
     const amount = Number(form.amount);
-    if (!amount || amount <= 0 || !form.description.trim()) {
+    if ((!amount || amount <= 0 || !form.description.trim()) && !form.receipt) {
+      setStatus((current) => ({
+        ...current,
+        error: "Add amount and description, or upload a receipt for AI extraction.",
+      }));
       return;
     }
 
@@ -112,7 +116,10 @@ function ExpenseDashboard({ tripId }) {
     try {
       setStatus((current) => ({ ...current, saving: true, error: "", success: "" }));
       const expensePayload = new FormData();
-      expensePayload.append("amount", amount);
+      if (amount > 0) {
+        expensePayload.append("amount", amount);
+      }
+
       expensePayload.append("description", form.description.trim());
       expensePayload.append("category", form.category);
       expensePayload.append("splitEqually", String(form.splitEqually));

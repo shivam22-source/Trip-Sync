@@ -27,8 +27,8 @@ const createTripSchema = Joi.object({
 });
 
 const createExpenseSchema = Joi.object({
-  amount: Joi.number().positive().required(),
-  description: Joi.string().trim().min(2).max(200).required(),
+  amount: Joi.number().positive().optional(),
+  description: Joi.string().trim().allow("").max(200),
   category: Joi.string().valid("Flights", "Food", "Hotel", "Misc").default("Misc"),
   splitEqually: Joi.boolean().default(true),
   receiptName: Joi.string().trim().allow("").max(200),

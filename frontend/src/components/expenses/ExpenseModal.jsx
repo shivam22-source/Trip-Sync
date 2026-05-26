@@ -37,6 +37,9 @@ function ExpenseModal({
         <form onSubmit={onSubmit} className="mt-6 space-y-4">
           <label className="block">
             <span className="text-sm font-black text-slate-700">Amount</span>
+            <span className="ml-2 text-xs font-bold text-slate-400">
+              optional with receipt
+            </span>
             <input
               type="number"
               min="1"
@@ -44,13 +47,15 @@ function ExpenseModal({
               value={form.amount}
               onChange={(event) => onFormChange("amount", event.target.value)}
               className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 font-bold text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:bg-white"
-              required
             />
           </label>
 
           <label className="block">
             <span className="text-sm font-black text-slate-700">
               Description
+            </span>
+            <span className="ml-2 text-xs font-bold text-slate-400">
+              optional with receipt
             </span>
             <input
               type="text"
@@ -60,7 +65,6 @@ function ExpenseModal({
                 onFormChange("description", event.target.value)
               }
               className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 font-bold text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:bg-white"
-              required
             />
           </label>
 
@@ -82,6 +86,9 @@ function ExpenseModal({
               <ImageUp size={18} />
               Receipt Screenshot
             </span>
+            <p className="mt-1 text-xs font-semibold text-slate-500">
+              Upload a receipt to let AI read amount and description.
+            </p>
             <input
               type="file"
               accept="image/*"

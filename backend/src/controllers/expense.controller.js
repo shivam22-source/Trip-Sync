@@ -8,6 +8,7 @@ const mongoose = require("mongoose");
 
 const cloudinary = require("../config/cloudinary");
 const streamifier = require("streamifier");
+const { extractReceiptDataFromUrl } = require("./ai.controller");
 
 async function canAccessTripExpenses(tripId, userId) {
   if (!mongoose.Types.ObjectId.isValid(tripId)) {
@@ -37,6 +38,12 @@ async function canAccessTripExpenses(tripId, userId) {
 
 function emitNotification(req, receiverId) {
   req.app.get("io")?.to(receiverId.toString()).emit("notification:new");
+}
+
+function normalizeExpenseCategory(category) {
+  return ["Flights", "Food", "Hotel", "Misc"].includes(category)
+    ? category
+    : "Misc";
 }
 
 // First calculate every member's raw money position from expenses only.
@@ -246,7 +253,7 @@ const createTripExpense = async (req, res) => {
   try {
     const { tripId } = req.params;
     const userId = req.user.id;
-    const {
+    let {
       amount,
       description,
       category = "Misc",
@@ -267,9 +274,9 @@ const createTripExpense = async (req, res) => {
       });
     }
 
-    if (!amount || Number(amount) <= 0 || !description?.trim()) {
+    if (!req.file && (!amount || Number(amount) <= 0 || !description?.trim())) {
       return res.status(400).json({
-        message: "Amount and description are required",
+        message: "Amount and description are required when no receipt is uploaded",
       });
     }
     // Receipt upload is optional. If present, store the image in Cloudinary and
@@ -296,6 +303,19 @@ const createTripExpense = async (req, res) => {
 
       receiptImage = result.secure_url;
       receiptName = req.file.originalname;
+
+      if (!amount || !description?.trim()) {
+        const extractedExpense = await extractReceiptDataFromUrl(receiptImage);
+        amount = amount || extractedExpense.amount;
+        description = description?.trim() || extractedExpense.description;
+        category = normalizeExpenseCategory(extractedExpense.category || category);
+      }
+    }
+
+    if (!amount || Number(amount) <= 0 || !description?.trim()) {
+      return res.status(400).json({
+        message: "Could not read amount and description from receipt",
+      });
     }
 
     const expense = await Expense.create({
@@ -303,7 +323,7 @@ const createTripExpense = async (req, res) => {
       paidBy: userId,
       amount: Number(amount),
       description: description.trim(),
-      category,
+      category: normalizeExpenseCategory(category),
       splitEqually,
       receiptName,
       receiptImage,

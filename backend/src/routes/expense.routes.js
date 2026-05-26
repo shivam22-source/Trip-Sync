@@ -12,7 +12,8 @@ const {
   getTripExpenses,
   settleTripPayment,
 } = require("../controllers/expense.controller");
-
+//ai feature
+const {extractReceiptExpense} = require("../controllers/ai.controller");
 
 const protect = require("../middleware/auth.middleware");
 
@@ -31,6 +32,13 @@ router.post(
   protect,
   validate(settlePaymentSchema),
   settleTripPayment
+);
+
+// AI receipt extraction(OCR)
+router.post(
+  "/:tripId/extract-receipt",
+  protect,
+  extractReceiptExpense
 );
 
 module.exports = router;
