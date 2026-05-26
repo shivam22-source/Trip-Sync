@@ -8,4 +8,5 @@ const router = express.Router();
 
 router.post("/plan-trip", protect, validate(aiTripPlanSchema), generateTripPlan);
 
+
 module.exports = router;
