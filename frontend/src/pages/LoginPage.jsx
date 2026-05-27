@@ -10,7 +10,11 @@ function LoginPage() {
     email: "",
     password: "",
   });
-  const [status, setStatus] = useState({ loading: false, error: "" });
+  const [status, setStatus] = useState({
+    loading: false,
+    error: "",
+    success: "",
+  });
 
   function updateField(event) {
     setForm((current) => ({
@@ -21,7 +25,7 @@ function LoginPage() {
 
   async function handleSubmit(event) {
     event.preventDefault();
-    setStatus({ loading: true, error: "" });
+    setStatus({ loading: true, error: "", success: "" });
 
     try {
       const payload =
@@ -33,9 +37,19 @@ function LoginPage() {
         mode === "register" ? await api.register(payload) : await api.login(payload);
 
       setSession({ token: data.token, user: data.user });
+
+      if (mode === "register") {
+        setStatus({
+          loading: false,
+          error: "",
+          success: "Account created. Complete your profile to get better trip matches.",
+        });
+        return;
+      }
+
       navigate("/trips");
     } catch (error) {
-      setStatus({ loading: false, error: error.message });
+      setStatus({ loading: false, error: error.message, success: "" });
     }
   }
 
@@ -62,7 +76,7 @@ function LoginPage() {
               type="button"
               onClick={() => {
                 setMode(item);
-                setStatus({ loading: false, error: "" });
+                setStatus({ loading: false, error: "", success: "" });
               }}
               className={`rounded-full px-4 py-2 text-sm font-black capitalize transition ${
                 mode === item
@@ -121,6 +135,21 @@ function LoginPage() {
             <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700">
               {status.error}
             </p>
+          )}
+
+          {status.success && (
+            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+              <p className="text-sm font-bold leading-6 text-emerald-800">
+                {status.success}
+              </p>
+              <button
+                type="button"
+                onClick={() => navigate("/profile")}
+                className="mt-3 rounded-full bg-emerald-600 px-4 py-2 text-sm font-black text-white transition hover:bg-emerald-700"
+              >
+                Go to profile
+              </button>
+            </div>
           )}
 
           <button
