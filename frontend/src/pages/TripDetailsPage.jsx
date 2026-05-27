@@ -29,6 +29,31 @@ function formatBudget(trip) {
   return `Rs ${trip.budgetPerDay.min}-${trip.budgetPerDay.max} / person / day`;
 }
 
+function AiCompatibilityCard({ compatibility }) {
+  if (!compatibility) {
+    return null;
+  }
+
+  const score = Number(compatibility.score) || 0;
+
+  return (
+    <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-3">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-xs font-black uppercase tracking-wide text-slate-400">
+          AI compatibility
+        </p>
+        <span className="rounded-full bg-slate-950 px-3 py-1 text-xs font-black capitalize text-white">
+          {compatibility.label || "medium"} match
+        </span>
+      </div>
+      <p className="mt-2 text-2xl font-black text-slate-950">{score}%</p>
+      <p className="mt-2 text-sm font-semibold leading-6">
+        {compatibility.reason}
+      </p>
+    </div>
+  );
+}
+
 function ProfileSummary({ person }) {
   return (
     <div>
@@ -79,36 +104,7 @@ function ProfileSummary({ person }) {
           )}
         </div>
       )}
-      {person?.compatibility && (
-        <div className="mt-3 rounded-2xl bg-white p-3">
-          <p className="text-xs font-black uppercase tracking-wide text-slate-400">
-            Compatibility signals
-          </p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {[
-              ["Money", person.compatibility.spendingBehavior],
-              ["Split", person.compatibility.expenseSplit],
-              ["Sleep", person.compatibility.sleepSchedule],
-              ["Morning", person.compatibility.morningStyle],
-              ["Clean", person.compatibility.cleanliness],
-              ["Social", person.compatibility.socialEnergy],
-              ["Food", person.compatibility.foodPreference],
-              ["Activity", person.compatibility.activityPreference],
-              ["Pace", person.compatibility.travelPace],
-              ["Talk", person.compatibility.communicationStyle],
-            ]
-              .filter(([, value]) => Boolean(value))
-              .map(([label, value]) => (
-                <span
-                  key={`${label}-${value}`}
-                  className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold capitalize text-slate-700"
-                >
-                  {label}: {value}
-                </span>
-              ))}
-          </div>
-        </div>
-      )}
+      <AiCompatibilityCard compatibility={person?.aiCompatibility} />
     </div>
   );
 }

@@ -62,6 +62,74 @@ Return ONLY valid JSON in this exact format:
   return parseGeminiJson(content);
 }
 
+function buildCompatibilityPrompt(trip, traveler) {
+  return `
+You are TripSync's group travel compatibility reviewer.
+Compare this traveler profile with the trip plan and return a simple admin-friendly score.
+
+Trip:
+${JSON.stringify({
+    title: trip.title,
+    destination: trip.destination,
+    description: trip.description,
+    category: trip.category,
+    budget: trip.budget,
+    filters: trip.filters,
+  })}
+
+Traveler:
+${JSON.stringify({
+    name: traveler.name,
+    bio: traveler.bio,
+    preferences: traveler.preferences,
+    travelProfile: traveler.travelProfile,
+    compatibility: traveler.compatibility,
+  })}
+
+Return ONLY valid JSON in this exact shape:
+{
+  "score": 0,
+  "label": "low | medium | high",
+  "reason": ""
+}
+
+Rules:
+- score must be 0 to 100
+- reason must be one short sentence
+`;
+}
+
+async function getAiCompatibilityScore(trip, traveler) {
+  if (!process.env.GEMINI_API_KEY || !traveler) {
+    return null;
+  }
+
+  const model = genAI.getGenerativeModel({
+    model: process.env.GEMINI_MODEL,
+    generationConfig: {
+      temperature: 0.2,
+      responseMimeType: "application/json",
+    },
+  });
+
+  const result = await model.generateContent(
+    buildCompatibilityPrompt(trip, traveler)
+  );
+  const content = result.response.text();
+
+  if (!content) {
+    return null;
+  }
+
+  const score = parseGeminiJson(content);
+
+  return {
+    score: Math.min(100, Math.max(0, Number(score.score) || 0)),
+    label: score.label || "medium",
+    reason: score.reason || "AI reviewed this traveler against the trip details.",
+  };
+}
+
 const generateTripPlan = async (req, res) => {
   try {
     if (!process.env.GEMINI_API_KEY) {
@@ -261,4 +329,5 @@ module.exports = {
   generateTripPlan,
   extractReceiptExpense,
   extractReceiptDataFromUrl,
+  getAiCompatibilityScore,
 };

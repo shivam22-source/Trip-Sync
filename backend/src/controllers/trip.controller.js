@@ -4,6 +4,7 @@ const Message =require("../models/Message");
 const Notification = require("../models/Notification");
 const User = require("../models/User");
 const cloudinary = require("../config/cloudinary");
+const { getAiCompatibilityScore } = require("./ai.controller");
 
 const budgetRanges = {
   low: { min: 100, max: 800 },
@@ -358,8 +359,25 @@ const getPendingRequests = async (req, res) => {
       "name email bio age gender city occupation languages preferences travelProfile compatibility profilePhoto"
     );
 
+    const requestsWithScores = [];
+
+    for (const request of requests) {
+      const requestData = request.toObject();
+
+      try {
+        requestData.userId.aiCompatibility = await getAiCompatibilityScore(
+          trip,
+          requestData.userId
+        );
+      } catch {
+        requestData.userId.aiCompatibility = null;
+      }
+
+      requestsWithScores.push(requestData);
+    }
+
     res.status(200).json({
-      requests,
+      requests: requestsWithScores,
     });
 
   } catch (error) {
