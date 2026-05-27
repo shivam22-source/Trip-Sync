@@ -55,6 +55,24 @@ function LoginPage() {
 
   return (
     <main className="mx-auto grid min-h-[calc(100vh-96px)] max-w-7xl items-center gap-8 px-4 py-10 sm:px-6 lg:grid-cols-2 lg:px-8">
+      {status.success && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/30 px-4">
+          <div className="w-full max-w-sm rounded-3xl border border-slate-200 bg-white p-6 text-center shadow-2xl">
+            <p className="text-lg font-black text-slate-950">Account created</p>
+            <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">
+              Complete your profile to get better trip matches.
+            </p>
+            <button
+              type="button"
+              onClick={() => navigate("/profile")}
+              className="mt-5 w-full rounded-2xl bg-slate-950 px-5 py-3 font-black text-white transition hover:bg-slate-800"
+            >
+              Go to profile
+            </button>
+          </div>
+        </div>
+      )}
+
       <section className="hidden lg:block">
         <p className="text-sm font-black uppercase tracking-[0.2em] text-teal-700">
           Safe trip access
@@ -135,21 +153,6 @@ function LoginPage() {
             <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700">
               {status.error}
             </p>
-          )}
-
-          {status.success && (
-            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
-              <p className="text-sm font-bold leading-6 text-emerald-800">
-                {status.success}
-              </p>
-              <button
-                type="button"
-                onClick={() => navigate("/profile")}
-                className="mt-3 rounded-full bg-emerald-600 px-4 py-2 text-sm font-black text-white transition hover:bg-emerald-700"
-              >
-                Go to profile
-              </button>
-            </div>
           )}
 
           <button
