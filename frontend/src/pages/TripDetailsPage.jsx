@@ -18,8 +18,16 @@ function formatDate(date) {
 }
 
 function formatBudget(trip) {
-  if (!trip?.budgetPerDay) {
-    return trip?.budget || "medium";
+  if (!trip) {
+    return "medium";
+  }
+
+  if (!trip.budgetPerDay) {
+    if (trip.budget) {
+      return trip.budget;
+    }
+
+    return "medium";
   }
 
   if (trip.budget === "high") {
@@ -54,32 +62,62 @@ function AiCompatibilityCard({ compatibility }) {
   );
 }
 
+function getPersonTags(person) {
+  const tags = [];
+
+  if (person.occupation) {
+    tags.push(person.occupation);
+  }
+
+  if (person.languages) {
+    tags.push(person.languages);
+  }
+
+  if (person.preferences && person.preferences.vibe) {
+    tags.push(person.preferences.vibe);
+  }
+
+  if (person.travelProfile && person.travelProfile.travelStyle) {
+    tags.push(person.travelProfile.travelStyle);
+  }
+
+  if (person.travelProfile && person.travelProfile.groupRole) {
+    tags.push(person.travelProfile.groupRole);
+  }
+
+  if (person.preferences && person.preferences.budget) {
+    tags.push(`${person.preferences.budget} budget`);
+  }
+
+  return tags;
+}
+
 function ProfileSummary({ person }) {
+  if (!person) {
+    return null;
+  }
+
+  const locationDetails = [person.age, person.gender, person.city]
+    .filter(Boolean)
+    .join(" | ");
+  const tags = getPersonTags(person);
+  const travelProfile = person.travelProfile || {};
+  const hasTravelNotes = travelProfile.whyTravel || travelProfile.boundaries;
+
   return (
     <div>
-      <p className="font-black text-slate-950">{person?.name || "Traveler"}</p>
+      <p className="font-black text-slate-950">{person.name || "Traveler"}</p>
       <p className="text-sm font-semibold text-slate-500">
-        {[person?.age, person?.gender, person?.city].filter(Boolean).join(" | ")}
+        {locationDetails}
       </p>
-      <p className="text-sm font-semibold text-slate-500">{person?.email}</p>
-      {person?.bio && (
+      <p className="text-sm font-semibold text-slate-500">{person.email}</p>
+      {person.bio && (
         <p className="mt-2 max-w-xl text-sm leading-6 text-slate-600">
           {person.bio}
         </p>
       )}
       <div className="mt-3 flex flex-wrap gap-2">
-        {[
-          person?.occupation,
-          person?.languages,
-          person?.preferences?.vibe,
-          person?.travelProfile?.travelStyle,
-          person?.travelProfile?.groupRole,
-          person?.preferences?.budget
-            ? `${person.preferences.budget} budget`
-            : "",
-        ]
-          .filter(Boolean)
-          .map((item) => (
+        {tags.map((item) => (
             <span
               key={item}
               className="rounded-full bg-white px-3 py-1 text-xs font-bold capitalize text-slate-600"
@@ -88,23 +126,23 @@ function ProfileSummary({ person }) {
             </span>
           ))}
       </div>
-      {(person?.travelProfile?.whyTravel || person?.travelProfile?.boundaries) && (
+      {hasTravelNotes && (
         <div className="mt-3 grid gap-2 text-sm leading-6 text-slate-600">
-          {person.travelProfile.whyTravel && (
+          {travelProfile.whyTravel && (
             <p>
               <span className="font-bold text-slate-800">Why travel: </span>
-              {person.travelProfile.whyTravel}
+              {travelProfile.whyTravel}
             </p>
           )}
-          {person.travelProfile.boundaries && (
+          {travelProfile.boundaries && (
             <p>
               <span className="font-bold text-slate-800">Comfort notes: </span>
-              {person.travelProfile.boundaries}
+              {travelProfile.boundaries}
             </p>
           )}
         </div>
       )}
-      <AiCompatibilityCard compatibility={person?.aiCompatibility} />
+      <AiCompatibilityCard compatibility={person.aiCompatibility} />
     </div>
   );
 }
@@ -125,14 +163,35 @@ function TripDetailsPage() {
   });
 
   const isAdmin = useMemo(() => {
-    const adminId = trip?.admin?._id || trip?.admin;
-    return Boolean(user?._id && adminId && user._id === adminId);
+    if (!trip || !user) {
+      return false;
+    }
+
+    let adminId = trip.admin;
+
+    if (trip.admin && trip.admin._id) {
+      adminId = trip.admin._id;
+    }
+
+    if (!user._id || !adminId) {
+      return false;
+    }
+
+    return user._id === adminId;
   }, [trip, user]);
 
-  const canChat = ["admin", "accepted"].includes(
-    isAdmin ? "admin" : trip?.viewerRequestStatus
-  );
-  const hasTripMemberAccess = isAdmin || trip?.viewerRequestStatus === "accepted";
+  let canChat = false;
+  let hasTripMemberAccess = false;
+
+  if (isAdmin) {
+    canChat = true;
+    hasTripMemberAccess = true;
+  }
+
+  if (trip && trip.viewerRequestStatus === "accepted") {
+    canChat = true;
+    hasTripMemberAccess = true;
+  }
 
   const loadTrip = useCallback(async () => {
     setStatus((current) => ({ ...current, loading: true, error: "" }));

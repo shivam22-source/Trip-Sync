@@ -5,231 +5,172 @@ const Trip = require("../models/Trip");
 const onlineUsers = new Map();
 const tripPresence = new Map();
 
+async function canUseTripRoom(tripId, userId) {
+  const trip = await Trip.findById(tripId);
+
+  if (!trip) {
+    return { allowed: false, reason: "Trip not found" };
+  }
+
+  if (trip.admin.toString() === userId) {
+    return { allowed: true, trip };
+  }
+
+  const member = await Member.findOne({
+    tripId,
+    userId,
+    status: "accepted",
+  });
+
+  if (member) {
+    return { allowed: true, trip };
+  }
+
+  return { allowed: false, reason: "Access denied" };
+}
+
 async function emitTripPresence(io, tripId) {
-    // Presence is kept in memory for MVP. For multi-server deployment, move
-    // this data to Redis and use the Socket.io Redis adapter.
-    const userIds = Array.from(tripPresence.get(tripId) || []);
-    const members = await Member.find({
-        tripId,
-        userId: { $in: userIds },
-        status: "accepted",
-    }).populate("userId", "name email");
-    const trip = await Trip.findById(tripId).populate("admin", "name email");
-    const onlineMembers = members.map((member) => ({
-        _id: member.userId._id,
-        name: member.userId.name,
-        email: member.userId.email,
-    }));
+  // Presence is in memory for the MVP. With multiple servers, move this to Redis.
+  let userIds = [];
 
-    if (
-        trip &&
-        userIds.includes(trip.admin._id.toString()) &&
-        !onlineMembers.some((member) => member._id.toString() === trip.admin._id.toString())
-    ) {
-        onlineMembers.push({
-            _id: trip.admin._id,
-            name: trip.admin.name,
-            email: trip.admin.email,
-        });
-    }
+  if (tripPresence.has(tripId)) {
+    userIds = Array.from(tripPresence.get(tripId));
+  }
 
-    io.to(tripId).emit("trip-presence", onlineMembers);
+  const trip = await Trip.findById(tripId).populate("admin", "name email");
+
+  if (!trip) {
+    return;
+  }
+
+  const members = await Member.find({
+    tripId,
+    userId: { $in: userIds },
+    status: "accepted",
+  }).populate("userId", "name email");
+
+  const onlineMembers = members.map((member) => ({
+    _id: member.userId._id,
+    name: member.userId.name,
+    email: member.userId.email,
+  }));
+
+  const adminId = trip.admin._id.toString();
+  const adminIsOnline = userIds.includes(adminId);
+  const adminAlreadyListed = onlineMembers.some(
+    (member) => member._id.toString() === adminId
+  );
+
+  if (adminIsOnline && !adminAlreadyListed) {
+    onlineMembers.push({
+      _id: trip.admin._id,
+      name: trip.admin.name,
+      email: trip.admin.email,
+    });
+  }
+
+  io.to(tripId).emit("trip-presence", onlineMembers);
+}
+
+function rememberTripPresence(socket, tripId, userId) {
+  if (!tripPresence.has(tripId)) {
+    tripPresence.set(tripId, new Set());
+  }
+
+  tripPresence.get(tripId).add(userId);
+  socket.currentTripId = tripId;
+}
+
+function removeTripPresence(socket, io) {
+  if (!socket.currentTripId) {
+    return;
+  }
+
+  if (!tripPresence.has(socket.currentTripId)) {
+    return;
+  }
+
+  const users = tripPresence.get(socket.currentTripId);
+  users.delete(socket.userId);
+
+  if (users.size === 0) {
+    tripPresence.delete(socket.currentTripId);
+    return;
+  }
+
+  emitTripPresence(io, socket.currentTripId).catch(() => {});
 }
 
 const registerChatHandlers = (io, socket) => {
-    onlineUsers.set(
-  socket.userId,
-  socket.id
-);
+  onlineUsers.set(socket.userId, socket.id);
 
-console.log(onlineUsers);
+  // Each user has a private room for notification refresh events.
+  socket.join(socket.userId);
 
-    console.log("Socket connected:", socket.id);
+  socket.on("join-trip", async ({ tripId, userId }) => {
+    try {
+      const access = await canUseTripRoom(tripId, userId);
 
-    socket.join(socket.userId);
-    // Private room for realtime notification refresh events.
+      if (!access.allowed) {
+        return socket.emit("error-message", access.reason);
+      }
 
-    // JOIN TRIP ROOM
-    socket.on(
-        "join-trip",
-        async ({ tripId, userId }) => {
+      socket.join(tripId);
+      rememberTripPresence(socket, tripId, userId);
+      await emitTripPresence(io, tripId);
 
-            try {
-
-                const trip =
-                    await Trip.findById(tripId);
-
-                if (!trip) {
-                    return socket.emit(
-                        "error-message",
-                        "Trip not found"
-                    );
-                }
-
-                let allowed = false;
-
-                // ADMIN CHECK
-                if (
-                    trip.admin.toString() === userId
-                ) {
-                    allowed = true;
-                }
-
-                // MEMBER CHECK
-                const member =
-                    await Member.findOne({
-                        tripId,
-                        userId,
-                        status: "accepted",
-                    });
-
-                if (member) {
-                    allowed = true;
-                }
-
-                if (!allowed) {
-
-                    return socket.emit(
-                        "error-message",
-                        "Access denied"
-                    );
-
-                }
-
-                socket.join(tripId);
-                socket.currentTripId = tripId;
-
-                // Track online members per trip room so the UI can show who is online.
-                if (!tripPresence.has(tripId)) {
-                    tripPresence.set(tripId, new Set());
-                }
-
-                tripPresence.get(tripId).add(userId);
-                await emitTripPresence(io, tripId);
-
-                socket.emit(
-                    "joined-trip",
-                    "Joined successfully"
-                );
-
-                console.log(
-                    `${userId} joined ${tripId}`
-                );
-
-            } catch (error) {
-
-                console.log(error);
-
-            }
-
-        }
-    );
-
-    // SEND MESSAGE
-    socket.on("send-message", async (data) => {
-
-        try {
-            const userId = socket.userId;
-            const { tripId, content, type } = data;
-            const trip =
-                    await Trip.findById(tripId);
-            if (!trip) {
-                return socket.emit(
-                    "error-message",
-                    "Trip not found"
-                );
-            }
-
-            let allowed = false;
-
-            // ADMIN CHECK
-            if (
-                trip.admin.toString() === userId
-            ) {
-                allowed = true;
-            }
-            // MEMBER CHECK
-            const member =
-                await Member.findOne({
-                    tripId,
-                    userId,
-                    status: "accepted",
-                });
-
-            if (member) {
-                allowed = true;
-            }
-
-            if (!allowed) {
-
-                return socket.emit(
-                    "error-message",
-                    "Access denied"
-                );
-
-            }
-            // SAVE MESSAGE
-            if (!content?.trim()) {
-                return socket.emit(
-                    "error-message",
-                    "Message cannot be empty"
-                );
-}
-            const message = await Message.create({
-                tripId,
-                sender: userId,
-                content,
-                type: type || "text",
-            });
-
-            await message.populate(
-                "sender",
-                "name email profilePhoto"
-            );
-
-            // SEND REALTIME
-            io.to(tripId).emit(
-                "receive-message",
-                message
-            );
-
-        } catch (error) {
-
-            console.log(error);
-
-        }
-    });
-
-socket.on("typing", (data) => {
-
-  socket.to(data.tripId).emit(
-    "user-typing",
-    {
-      userId: socket.userId,
+      return socket.emit("joined-trip", "Joined successfully");
+    } catch {
+      return socket.emit("error-message", "Could not join trip chat");
     }
-  );
+  });
 
-});
+  socket.on("send-message", async ({ tripId, content, type }) => {
+    try {
+      if (!content) {
+        return socket.emit("error-message", "Message cannot be empty");
+      }
 
-    // DISCONNECT
-    socket.on("disconnect", () => {
-        onlineUsers.delete(socket.userId);
+      if (!content.trim()) {
+        return socket.emit("error-message", "Message cannot be empty");
+      }
 
-        if (socket.currentTripId && tripPresence.has(socket.currentTripId)) {
-            const users = tripPresence.get(socket.currentTripId);
-            users.delete(socket.userId);
+      const access = await canUseTripRoom(tripId, socket.userId);
 
-            if (!users.size) {
-                tripPresence.delete(socket.currentTripId);
-            } else {
-                emitTripPresence(io, socket.currentTripId).catch(console.log);
-            }
-        }
+      if (!access.allowed) {
+        return socket.emit("error-message", access.reason);
+      }
 
-        console.log("User disconnected");
+      let messageType = "text";
 
+      if (type) {
+        messageType = type;
+      }
+
+      const message = await Message.create({
+        tripId,
+        sender: socket.userId,
+        content,
+        type: messageType,
+      });
+
+      await message.populate("sender", "name email profilePhoto");
+      return io.to(tripId).emit("receive-message", message);
+    } catch {
+      return socket.emit("error-message", "Could not send message");
+    }
+  });
+
+  socket.on("typing", ({ tripId }) => {
+    socket.to(tripId).emit("user-typing", {
+      userId: socket.userId,
     });
+  });
 
+  socket.on("disconnect", () => {
+    onlineUsers.delete(socket.userId);
+    removeTripPresence(socket, io);
+  });
 };
 
 module.exports = registerChatHandlers;

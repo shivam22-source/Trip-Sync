@@ -2,32 +2,55 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 const Trip = require("../models/Trip");
 const Member = require("../models/Member");
 const axios = require("axios");
+
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-
-////Parse text to json format
 function parseGeminiJson(text) {
-  const cleaned = text
+  // Gemini may wrap JSON in markdown fences, so clean it before parsing.
+  const cleanText = text
     .replace(/```json/gi, "")
     .replace(/```/g, "")
     .trim();
 
-  return JSON.parse(cleaned);
+  return JSON.parse(cleanText);
+}
+
+function getGeminiModel(temperature) {
+  return genAI.getGenerativeModel({
+    model: process.env.GEMINI_MODEL,
+    generationConfig: {
+      temperature,
+      responseMimeType: "application/json",
+    },
+  });
+}
+
+function limitScore(value) {
+  let score = Number(value);
+
+  if (!score) {
+    score = 0;
+  }
+
+  if (score < 0) {
+    score = 0;
+  }
+
+  if (score > 100) {
+    score = 100;
+  }
+
+  return score;
 }
 
 async function extractReceiptDataFromUrl(receiptImage) {
+  // Cloudinary gives us a URL. Gemini needs the image bytes as base64.
   const imageResponse = await axios.get(receiptImage, {
     responseType: "arraybuffer",
   });
   const mimeType = imageResponse.headers["content-type"] || "image/jpeg";
   const base64Image = Buffer.from(imageResponse.data).toString("base64");
-  const model = genAI.getGenerativeModel({
-    model: process.env.GEMINI_MODEL,
-    generationConfig: {
-      temperature: 0.2,
-      responseMimeType: "application/json",
-    },
-  });
+  const model = getGeminiModel(0.2);
 
   const result = await model.generateContent([
     {
@@ -104,13 +127,8 @@ async function getAiCompatibilityScore(trip, traveler) {
     return null;
   }
 
-  const model = genAI.getGenerativeModel({
-    model: process.env.GEMINI_MODEL,
-    generationConfig: {
-      temperature: 0.2,
-      responseMimeType: "application/json",
-    },
-  });
+  // A low temperature keeps scoring more stable and less creative.
+  const model = getGeminiModel(0.2);
 
   const result = await model.generateContent(
     buildCompatibilityPrompt(trip, traveler)
@@ -122,11 +140,21 @@ async function getAiCompatibilityScore(trip, traveler) {
   }
 
   const score = parseGeminiJson(content);
+  let label = score.label;
+  let reason = score.reason;
+
+  if (!label) {
+    label = "medium";
+  }
+
+  if (!reason) {
+    reason = "AI reviewed this traveler against the trip details.";
+  }
 
   return {
-    score: Math.min(100, Math.max(0, Number(score.score) || 0)),
-    label: score.label || "medium",
-    reason: score.reason || "AI reviewed this traveler against the trip details.",
+    score: limitScore(score.score),
+    label,
+    reason,
   };
 }
 
@@ -156,13 +184,7 @@ const generateTripPlan = async (req, res) => {
       });
     }
 
-    const model = genAI.getGenerativeModel({
-      model: process.env.GEMINI_MODEL,
-      generationConfig: {
-        temperature: 0.7,
-        responseMimeType: "application/json",
-      },
-    });
+    const model = getGeminiModel(0.7);
 
     const prompt = `
 You are TripSync's travel itinerary planner.
@@ -238,12 +260,9 @@ Return only valid JSON in this exact shape:
     });
   }
 };
-//image  to gemini
-
 
 const extractReceiptExpense = async (req, res) => {
   try {
-    // check gemini key
     if (!process.env.GEMINI_API_KEY) {
       return res.status(500).json({
         success: false,
@@ -290,7 +309,6 @@ const extractReceiptExpense = async (req, res) => {
       success: true,
       expenseData,
     });
-
   } catch (error) {
     console.error("RECEIPT OCR ERROR:", error);
 
@@ -321,9 +339,6 @@ const extractReceiptExpense = async (req, res) => {
     });
   }
 };
-
-
-
 
 module.exports = {
   generateTripPlan,

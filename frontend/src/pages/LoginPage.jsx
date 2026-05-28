@@ -28,17 +28,27 @@ function LoginPage() {
     setStatus({ loading: true, error: "", success: "" });
 
     try {
-      const payload =
-        mode === "register"
-          ? form
-          : { email: form.email, password: form.password };
+      let payload = {
+        email: form.email,
+        password: form.password,
+      };
 
-      const data =
-        mode === "register" ? await api.register(payload) : await api.login(payload);
+      if (mode === "register") {
+        payload = form;
+      }
+
+      let data;
+
+      if (mode === "register") {
+        data = await api.register(payload);
+      } else {
+        data = await api.login(payload);
+      }
 
       setSession({ token: data.token, user: data.user });
 
       if (mode === "register") {
+        // New users need profile data before matching and AI scoring work well.
         setStatus({
           loading: false,
           error: "",
@@ -53,9 +63,23 @@ function LoginPage() {
     }
   }
 
+  function getModeButtonClass(item) {
+    let className =
+      "rounded-full px-4 py-2 text-sm font-black capitalize transition";
+
+    if (mode === item) {
+      className += " bg-slate-950 text-white shadow-sm";
+    } else {
+      className += " text-slate-500";
+    }
+
+    return className;
+  }
+
   return (
     <main className="mx-auto grid min-h-[calc(100vh-96px)] max-w-7xl items-center gap-8 px-4 py-10 sm:px-6 lg:grid-cols-2 lg:px-8">
       {status.success && (
+        // Small onboarding prompt after signup. Login users skip this.
         <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/30 px-4">
           <div className="w-full max-w-sm rounded-3xl border border-slate-200 bg-white p-6 text-center shadow-2xl">
             <p className="text-lg font-black text-slate-950">Account created</p>
@@ -96,11 +120,7 @@ function LoginPage() {
                 setMode(item);
                 setStatus({ loading: false, error: "", success: "" });
               }}
-              className={`rounded-full px-4 py-2 text-sm font-black capitalize transition ${
-                mode === item
-                  ? "bg-slate-950 text-white shadow-sm"
-                  : "text-slate-500"
-              }`}
+              className={getModeButtonClass(item)}
             >
               {item}
             </button>
@@ -159,11 +179,9 @@ function LoginPage() {
             disabled={status.loading}
             className="w-full rounded-2xl bg-slate-950 px-5 py-3 font-black text-white transition hover:-translate-y-0.5 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {status.loading
-              ? "Please wait..."
-              : mode === "register"
-                ? "Create account"
-                : "Login"}
+            {status.loading && "Please wait..."}
+            {!status.loading && mode === "register" && "Create account"}
+            {!status.loading && mode === "login" && "Login"}
           </button>
         </form>
       </section>

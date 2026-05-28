@@ -1,23 +1,16 @@
 require("dotenv").config();
 
-const mongoose = require("mongoose");
-
 const http = require("http");
-
+const mongoose = require("mongoose");
 const { Server } = require("socket.io");
 
 const app = require("./app");
 const { allowedOrigins } = require("./config/cors");
+const socketAuthMiddleware = require("./middleware/socket.middleware");
+const registerChatHandlers = require("./sockets/chat.socket");
 
 const PORT = process.env.PORT || 5000;
-
-
-
 const server = http.createServer(app);
-
-const registerChatHandlers =require("./sockets/chat.socket");
-
-const socketAuthMiddleware = require("./middleware/socket.middleware");
 
 const io = new Server(server, {
   cors: {
@@ -29,27 +22,18 @@ const io = new Server(server, {
 app.set("io", io);
 
 io.use(socketAuthMiddleware);
-
 io.on("connection", (socket) => {
-
-   registerChatHandlers(io, socket);
-
-  socket.on("disconnect", () => {
-    console.log("User disconnected");
-  });
-
+  registerChatHandlers(io, socket);
 });
 
-mongoose.connect(process.env.MONGO_URI)
-.then(() => {
-
-    console.log("MongoDB Connected");
-
+mongoose
+  .connect(process.env.MONGO_URI)
+  .then(() => {
+    console.log("MongoDB connected");
     server.listen(PORT, () => {
-        console.log(`Server running on ${PORT}`);
+      console.log(`Server running on ${PORT}`);
     });
-
-})
-.catch((err) => {
-    console.log(err);
-});
+  })
+  .catch((error) => {
+    console.error("MongoDB connection failed:", error.message);
+  });
