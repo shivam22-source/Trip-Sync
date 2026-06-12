@@ -1,245 +1,155 @@
-# TripSync
+<div align="center">
 
-TripSync is a full-stack MERN travel collaboration app where users can create group trips, request to join trips, chat with accepted members, split expenses, and receive realtime updates.
+# ✈️ TripSync
 
-It is built as a production-style learning project with authentication, protected trip access, Cloudinary media uploads, Socket.io realtime features, and a clean React + Tailwind frontend.
+**Plan together. Travel together.**
 
-## Highlights
+A full-stack MERN travel collaboration platform for creating group trips, splitting expenses, and staying in sync — in real time.
 
-- Secure auth with JWT and protected routes
-- Trip creation with destination, dates, budget, group rules, and cover image
-- Join request workflow with admin accept/reject controls
-- Realtime trip chat with online member presence
-- Realtime notification center for requests, approvals, expenses, and settlements
-- Expense splitter with personal balances and per-transaction settle-up
-- Cloudinary uploads for profile photos, trip covers, and receipt images
-- Modular frontend structure with services, hooks, and reusable components
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-trip--sync--smoky.vercel.app-black?style=flat-square)](https://trip-sync-smoky.vercel.app/)
+![Tech](https://img.shields.io/badge/Stack-MERN-blue?style=flat-square)
+![Realtime](https://img.shields.io/badge/Realtime-Socket.io-green?style=flat-square)
+
+</div>
+
+---
+
+## What is TripSync?
+
+TripSync lets you create group trips, control who joins, chat with your travel crew, and keep expenses fair — all in one place.
+
+It's built as a production-style learning project with real authentication, protected trip access, Cloudinary media uploads, Socket.io realtime features, and a clean React + Tailwind frontend.
+
+**Core loop:**
+```
+Create a trip → Accept members → Chat & plan → Split expenses → Settle up
+```
+
+---
+
+## Features
+
+### 🔐 Authentication & Profiles
+- JWT-based auth with protected routes
+- Profile photo upload via Cloudinary
+- Travel preferences (smoking, drinking, gender preference)
+
+### 🗺️ Trip Management
+- Create trips with destination, dates, budget range, max members, group rules, and a cover image
+- Filter trips by destination, category, budget, and travel preferences
+- Delete trips as the admin
+
+### 🚪 Join Request Workflow
+```
+User requests to join
+     ↓
+Backend creates a pending record
+     ↓
+Admin gets a realtime notification
+     ↓
+Admin accepts or rejects
+     ↓
+Requester is notified instantly
+     ↓
+Chat & expenses unlock on acceptance
+```
+This keeps groups private and gives the trip creator full control over who joins.
+
+### 💬 Realtime Chat
+- Message history loads via REST
+- New messages delivered via Socket.io
+- Online member presence shown live
+- Typing indicators
+
+### 💸 Expense Splitter
+- Add expenses with receipt image uploads
+- Each member sees only their relevant settlement rows
+- Two-pointer debtor-creditor algorithm produces a minimal, clean settlement plan
+- Settling a payment doesn't rewrite expense history — settlements are stored separately
+
+**Balance logic:**
+```
+Balance = total expenses paid - settlements received
+Positive balance → you are owed money
+Negative balance → you owe money
+```
+
+### 🔔 Notification Center
+Realtime notifications for:
+- Join request received
+- Request accepted / rejected
+- Expense added
+- Payment settled
+
+Design principle: MongoDB is the source of truth. Socket.io is the delivery layer. If a socket event is missed, the next REST fetch returns correct data.
+
+### 🖼️ Cloudinary Media Uploads
+- Profile photos
+- Trip cover images
+- Receipt images (ready for future OCR/AI extraction)
+
+Upload flow: `FormData → Multer → Cloudinary → secure URL stored in MongoDB`
+
+---
 
 ## Tech Stack
 
-Frontend:
+| Layer | Technologies |
+|---|---|
+| Frontend | React, Vite, Tailwind CSS, React Router, Socket.io Client |
+| Backend | Node.js, Express, MongoDB, Mongoose |
+| Auth | JWT, bcryptjs |
+| Validation | Joi |
+| Realtime | Socket.io |
+| Media | Multer, Cloudinary |
+| Analytics | Vercel Analytics |
 
-- React
-- Vite
-- Tailwind CSS
-- React Router
-- Socket.io Client
-- Vercel Analytics
-
-Backend:
-
-- Node.js
-- Express
-- MongoDB
-- Mongoose
-- JWT
-- bcryptjs
-- Joi
-- Socket.io
-- Multer
-- Cloudinary
+---
 
 ## Project Structure
 
-```txt
+```
 TripSync/
-  backend/
-    src/
-      config/
-      controllers/
-      middleware/
-      models/
-      routes/
-      sockets/
-      app.js
-      server.js
-
-  frontend/
-    src/
-      components/
-      hooks/
-      pages/
-      services/
-      App.jsx
-      main.jsx
-      index.css
+├── backend/
+│   └── src/
+│       ├── config/
+│       ├── controllers/
+│       ├── middleware/
+│       ├── models/
+│       ├── routes/
+│       ├── sockets/
+│       ├── app.js
+│       └── server.js
+│
+└── frontend/
+    └── src/
+        ├── components/
+        ├── hooks/
+        ├── pages/
+        ├── services/
+        ├── App.jsx
+        ├── main.jsx
+        └── index.css
 ```
 
-## Main Features
+---
 
-### Authentication And Profile
+## API Reference
 
-Users can register, log in, update their profile, choose travel preferences, and upload a profile photo. The frontend stores the logged-in session and sends the token with protected API calls.
-
-### Trip Management
-
-Users can create trips with title, destination, description, dates, category, daily budget range, maximum members, group rules, and an optional cover image. Trip images are uploaded to Cloudinary and stored in MongoDB as URLs.
-
-### Search And Filters
-
-Trips can be filtered by destination/search text, category, budget, smoking preference, drinking preference, and gender preference.
-
-Example:
-
-```txt
-GET /api/trips?q=goa&budget=medium&smokingAllowed=true
+### Auth
 ```
-
-### Join Request Workflow
-
-TripSync uses an approval-based group model:
-
-```txt
-User requests to join a trip
-Backend creates a pending member record
-Trip admin receives a realtime notification
-Admin accepts or rejects the request
-Requester receives a realtime status notification
-Chat and expense access unlock only after acceptance
-```
-
-This keeps group access private and gives the trip creator control over who joins.
-
-### Realtime Chat
-
-Accepted members can chat inside the trip. Old messages load through REST, while new messages are delivered through Socket.io. The chat also shows online member presence.
-
-```txt
-REST = message history
-Socket.io = live messages, typing, and online presence
-```
-
-### Expense Splitter
-
-Accepted trip members can add expenses and settle payments. Each user only sees settlement rows that involve them, such as:
-
-```txt
-You pay Shivam Rs 600
-Rahul pays You Rs 400
-```
-
-Expense logic:
-
-```txt
-Each expense is stored as history
-Each settlement is stored separately
-Balance = expenses - settled payments
-```
-
-Settlement algorithm:
-
-```txt
-1. Convert all expenses into one net balance per member
-2. Negative balance means the member owes money
-3. Positive balance means the member should receive money
-4. Keep one pointer on debtors and one pointer on creditors
-5. Match the current debtor with the current creditor
-6. Move the pointer when that person's remaining balance becomes zero
-```
-
-This two-pointer debtor-creditor matching avoids creating unnecessary pairwise payments between every member. The result is a smaller and cleaner settlement plan.
-
-This avoids deleting or rewriting original expenses when someone marks a payment as paid.
-
-### Notification Center
-
-Notifications are created for:
-
-- join request received
-- request accepted
-- request rejected
-- expense added
-- payment settled
-
-Design choice:
-
-```txt
-MongoDB is the source of truth.
-Socket.io is used as a realtime refresh signal.
-If a socket event is missed, the next REST fetch still returns correct data.
-```
-
-### Cloudinary Media Uploads
-
-Cloudinary is used for:
-
-- profile photos
-- trip cover images
-- receipt images for future AI/OCR expense extraction
-
-Upload flow:
-
-```txt
-Frontend sends multipart FormData
-Multer reads the file
-Backend uploads it to Cloudinary
-Cloudinary returns a secure URL
-MongoDB stores the URL, not the image file
-```
-
-### Request Validation
-
-Joi validation is used only on critical write endpoints, so invalid data is rejected before it reaches controller logic.
-
-Validated flows:
-
-- register
-- login
-- create trip
-- add expense
-- settle payment
-
-Implementation:
-
-```txt
-Route receives request
-Joi schema validates req.body
-Invalid data returns 400 with a clear message
-Valid data continues to the controller
-```
-
-Current files:
-
-```txt
-backend/src/middleware/validate.middleware.js
-backend/src/validations/request.schemas.js
-```
-
-### Deployment Analytics
-
-The frontend includes Vercel Analytics to track production usage after deployment.
-
-Tracked from Vercel dashboard:
-
-- visitors and page views
-- online/recent traffic
-- route-level usage
-
-Implementation:
-
-```txt
-frontend/src/main.jsx
-```
-
-## Important API Routes
-
-Auth:
-
-```txt
 POST /api/auth/register
 POST /api/auth/login
 ```
 
-Users:
-
-```txt
+### Users
+```
 GET   /api/users/profile
 PATCH /api/users/profile
 ```
 
-Trips:
-
-```txt
+### Trips
+```
 GET    /api/trips
 POST   /api/trips
 GET    /api/trips/:id
@@ -250,54 +160,67 @@ PATCH  /api/trips/:tripId/reject/:memberId
 DELETE /api/trips/:id
 ```
 
-Messages:
-
-```txt
+### Messages
+```
 GET /api/messages/:tripId
 ```
 
-Expenses:
-
-```txt
+### Expenses
+```
 GET  /api/expenses/:tripId
 POST /api/expenses/:tripId
 POST /api/expenses/:tripId/settle
 ```
 
-Notifications:
-
-```txt
+### Notifications
+```
 GET   /api/notifications
 PATCH /api/notifications/read-all
 PATCH /api/notifications/:notificationId/read
 ```
 
+---
+
 ## Socket Events
 
-Client emits:
+**Client → Server**
+| Event | Description |
+|---|---|
+| `join-trip` | Join a trip room |
+| `send-message` | Send a chat message |
+| `typing` | Emit typing indicator |
 
-```txt
-join-trip
-send-message
-typing
-```
+**Server → Client**
+| Event | Description |
+|---|---|
+| `joined-trip` | Confirmed room join |
+| `receive-message` | Incoming chat message |
+| `trip-presence` | Online member list |
+| `notification:new` | New notification trigger |
+| `user-typing` | Another user is typing |
+| `error-message` | Error event |
 
-Server emits:
+---
 
-```txt
-joined-trip
-receive-message
-trip-presence
-notification:new
-user-typing
-error-message
-```
+## Local Setup
 
-## Environment Variables
-
-Backend `.env`:
+### 1. Clone the repo
 
 ```bash
+git clone https://github.com/your-username/tripsync.git
+cd tripsync
+```
+
+### 2. Backend
+
+```bash
+cd backend
+npm install
+```
+
+Create `backend/.env`:
+
+```env
 PORT=5000
 MONGO_URI=your_mongodb_connection_string
 JWT_SECRET=your_jwt_secret
@@ -306,76 +229,96 @@ CLOUDINARY_API_KEY=your_cloudinary_api_key
 CLOUDINARY_API_SECRET=your_cloudinary_api_secret
 ```
 
-Frontend `.env`:
-
 ```bash
-VITE_API_URL=http://localhost:5000/api
-VITE_SOCKET_URL=http://localhost:5000
-```
-
-## Local Setup
-
-Backend:
-
-```bash
-cd backend
-npm install
 npm run dev
 ```
 
-Frontend:
+### 3. Frontend
 
 ```bash
 cd frontend
 npm install
+```
+
+Create `frontend/.env`:
+
+```env
+VITE_API_URL=http://localhost:5000/api
+VITE_SOCKET_URL=http://localhost:5000
+```
+
+```bash
 npm run dev
 ```
 
-Default URLs:
+**Default URLs:**
+- Backend: `http://localhost:5000`
+- Frontend: `http://localhost:5173`
 
-```txt
-Backend:  http://localhost:5000
-Frontend: http://localhost:5173
+---
+
+## Testing the Full Flow
+
+Open two browser sessions (one normal + one incognito) and run through this sequence:
+
+```
+[ Account A ] Create a trip
+[ Account B ] Request to join
+[ Account A ] Receives realtime notification → Accepts
+[ Account B ] Receives accepted notification
+[ Both      ] Chat unlocks, both appear online
+[ Account A ] Adds an expense
+[ Account B ] Receives expense notification
+[ Both      ] View settlement plan
+[ Account A ] Marks a payment as settled
+[ Both      ] Balances update
 ```
 
-## Testing Flow
+---
 
-Use two browser sessions:
+## Architecture Notes
 
-```txt
-Normal browser window = Account A
-Incognito window      = Account B
+TripSync is not a basic CRUD app. It combines authenticated access control, an approval-based group model, realtime chat, realtime notifications, media uploads, and expense settlement logic.
+
+The architecture follows one simple principle:
+
+```
+REST        → durable data
+Socket.io   → realtime updates
+MongoDB     → source of truth
+Cloudinary  → media storage
+React hooks → reusable frontend logic
 ```
 
-Suggested flow:
+This separation keeps the system debuggable, consistent, and easy to extend — for example, adding AI-based receipt extraction or member compatibility scoring later.
 
-```txt
-Account A creates a trip
-Account B requests to join
-Account A receives a realtime notification
-Account A accepts Account B
-Account B receives an accepted notification
-Chat unlocks for both users
-Both users appear online in chat
-One user adds an expense
-The other user receives an expense notification
-Settlement plan shows who needs to pay whom
-User marks one payment as paid
-Balances update
-```
+---
 
-## Architecture Decisions
+## Validation
 
-TripSync is not just a CRUD app. It combines authenticated access, group approval, realtime chat, realtime notifications, Cloudinary uploads, and expense settlement logic.
+Joi schemas validate critical write endpoints before data reaches the controller:
 
-The key architecture idea is simple:
+- `POST /api/auth/register`
+- `POST /api/auth/login`
+- `POST /api/trips`
+- `POST /api/expenses/:tripId`
+- `POST /api/expenses/:tripId/settle`
 
-```txt
-REST handles durable data.
-Socket.io handles realtime updates.
-MongoDB remains the source of truth.
-Cloudinary stores media.
-React services and hooks keep frontend logic reusable.
-```
+Invalid requests return `400` with a clear error message.
 
-This makes the app easier to explain, extend, and scale later with AI-based receipt extraction or compatibility scoring.
+---
+
+## Deployment
+
+The frontend is deployed on **Vercel** with Vercel Analytics enabled for tracking:
+- Page views and unique visitors
+- Route-level usage
+- Live traffic
+
+---
+
+<div align="center">
+
+Built with care by [your name] · [Live Demo](https://trip-sync-smoky.vercel.app/)
+
+</div>
