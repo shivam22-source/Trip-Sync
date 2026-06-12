@@ -20,7 +20,7 @@ function getGeminiModel(temperature) {
     model: process.env.GEMINI_MODEL,
     generationConfig: {
       temperature,
-      responseMimeType: "application/json",
+      responseimagetype: "application/json",
     },
   });
 }
@@ -48,7 +48,7 @@ async function extractReceiptDataFromUrl(receiptImage) {
   const imageResponse = await axios.get(receiptImage, {
     responseType: "arraybuffer",
   });
-  const mimeType = imageResponse.headers["content-type"] || "image/jpeg";
+  const imagetype = imageResponse.headers["content-type"] || "image/jpeg";
   const base64Image = Buffer.from(imageResponse.data).toString("base64");
   const model = getGeminiModel(0.2);
 
@@ -56,7 +56,7 @@ async function extractReceiptDataFromUrl(receiptImage) {
     {
       inlineData: {
         data: base64Image,
-        mimeType,
+        imagetype,
       },
     },
     {
