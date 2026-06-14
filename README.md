@@ -319,6 +319,6 @@ The frontend is deployed on **Vercel** with Vercel Analytics enabled for trackin
 
 <div align="center">
 
-Built with care by [your name] · [Live Demo](https://trip-sync-smoky.vercel.app/)
+Built with care by Shivam · [Live Demo](https://trip-sync-smoky.vercel.app/)
 
 </div>
