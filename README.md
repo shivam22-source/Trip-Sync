@@ -18,7 +18,7 @@ A full-stack MERN travel collaboration platform for creating group trips, splitt
 
 TripSync lets you create group trips, control who joins, chat with your travel crew, and keep expenses fair — all in one place.
 
-It's built as a production-style learning project with real authentication, protected trip access, Cloudinary media uploads, Socket.io realtime features, and a clean React + Tailwind frontend.
+It's built as a production-style learning project with real authentication, protected trip access, Cloudinary media uploads, Socket.io realtime features, Gemini-powered AI features, and a clean React + Tailwind frontend.
 
 **Core loop:**
 ```
@@ -28,6 +28,13 @@ Create a trip → Accept members → Chat & plan → Split expenses → Settle u
 ---
 
 ## Features
+
+### AI Features
+- AI itinerary planner for trip admins
+- AI compatibility score for pending join requests
+- AI receipt extraction for expense creation
+
+AI is used as an assistant, not as the source of truth. The final saved data still goes through normal backend models and validation.
 
 ### 🔐 Authentication & Profiles
 - JWT-based auth with protected routes
@@ -63,6 +70,7 @@ This keeps groups private and gives the trip creator full control over who joins
 
 ### 💸 Expense Splitter
 - Add expenses with receipt image uploads
+- Extract amount, description, and category from receipt images using Gemini
 - Each member sees only their relevant settlement rows
 - Two-pointer debtor-creditor algorithm produces a minimal, clean settlement plan
 - Settling a payment doesn't rewrite expense history — settlements are stored separately
@@ -86,9 +94,14 @@ Design principle: MongoDB is the source of truth. Socket.io is the delivery laye
 ### 🖼️ Cloudinary Media Uploads
 - Profile photos
 - Trip cover images
-- Receipt images (ready for future OCR/AI extraction)
+- Receipt images for AI expense extraction
 
 Upload flow: `FormData → Multer → Cloudinary → secure URL stored in MongoDB`
+
+AI receipt flow:
+```
+Receipt image -> Cloudinary URL -> Gemini image analysis -> expense JSON -> normal expense creation
+```
 
 ---
 
@@ -102,6 +115,7 @@ Upload flow: `FormData → Multer → Cloudinary → secure URL stored in MongoD
 | Validation | Joi |
 | Realtime | Socket.io |
 | Media | Multer, Cloudinary |
+| AI | Gemini API |
 | Analytics | Vercel Analytics |
 
 ---
@@ -172,6 +186,12 @@ POST /api/expenses/:tripId
 POST /api/expenses/:tripId/settle
 ```
 
+### AI APIs
+```
+POST /api/ai/plan-trip
+POST /api/expenses/:tripId/extract-receipt
+```
+
 ### Notifications
 ```
 GET   /api/notifications
@@ -227,6 +247,8 @@ JWT_SECRET=your_jwt_secret
 CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name
 CLOUDINARY_API_KEY=your_cloudinary_api_key
 CLOUDINARY_API_SECRET=your_cloudinary_api_secret
+GEMINI_API_KEY=your_gemini_api_key
+GEMINI_MODEL=gemini-1.5-flash
 ```
 
 ```bash
@@ -287,10 +309,11 @@ REST        → durable data
 Socket.io   → realtime updates
 MongoDB     → source of truth
 Cloudinary  → media storage
+Gemini      -> AI assistance
 React hooks → reusable frontend logic
 ```
 
-This separation keeps the system debuggable, consistent, and easy to extend — for example, adding AI-based receipt extraction or member compatibility scoring later.
+This separation keeps the system debuggable and consistent. AI output is converted into normal app data, so itinerary plans, compatibility scores, and extracted expenses stay easy to inspect and explain.
 
 ---
 
