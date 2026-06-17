@@ -26,10 +26,15 @@ const settlementSchema = new mongoose.Schema(
       min: 1,
     },
 
-    settledBy: {
+    markedPaidBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
+    },
+
+    settledAt: {
+      type: Date,
+      default: Date.now,
     },
   },
   {

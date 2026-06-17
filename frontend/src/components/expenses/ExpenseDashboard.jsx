@@ -170,7 +170,7 @@ function ExpenseDashboard({ tripId }) {
       setStatus((current) => ({
         ...current,
         settlingId: "",
-        success: "Payment marked as settled.",
+        success: "Payment marked as paid.",
       }));
     } catch (error) {
       setStatus((current) => ({

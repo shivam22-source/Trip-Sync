@@ -11,10 +11,10 @@ function SettlementSummary({ settlements = [], onSettle, settlingId }) {
     <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
       <div className="border-b border-slate-100 p-5 sm:p-6">
         <p className="text-xs font-black uppercase tracking-wide text-slate-400">
-          Your Settle Up Plan
+          Your payment plan
         </p>
         <h2 className="mt-1 text-2xl font-black text-slate-950">
-          Payments involving you
+          Who needs to pay whom
         </h2>
       </div>
 
@@ -50,7 +50,7 @@ function SettlementSummary({ settlements = [], onSettle, settlingId }) {
                   disabled={settlingId === settlement.id}
                   className="rounded-full bg-slate-950 px-4 py-2 text-xs font-black text-white transition hover:bg-slate-800 disabled:opacity-60"
                 >
-                  {settlingId === settlement.id ? "Saving..." : "Mark Paid"}
+                  {settlingId === settlement.id ? "Saving..." : "Mark as paid"}
                 </button>
               </div>
             </div>
@@ -58,7 +58,7 @@ function SettlementSummary({ settlements = [], onSettle, settlingId }) {
         </div>
       ) : (
         <div className="p-5 text-sm font-semibold text-slate-500 sm:p-6">
-          You do not need to pay or receive anything right now.
+          Everything is balanced right now.
         </div>
       )}
     </section>

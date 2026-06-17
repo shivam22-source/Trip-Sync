@@ -407,7 +407,7 @@ const settleTripPayment = async (req, res) => {
       from,
       to,
       amount: Number(amount),
-      settledBy: userId,
+      markedPaidBy: userId,
     });
 
     // Payment notification goes only to the other person in this transaction.
@@ -424,7 +424,7 @@ const settleTripPayment = async (req, res) => {
     emitNotification(req, receiver);
 
     res.status(200).json({
-      message: "Payment settled",
+      message: "Payment marked as paid",
     });
   } catch (error) {
     res.status(500).json({
