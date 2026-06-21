@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { api, setSession } from "../services/api";
+import { API_ORIGIN, api, setSession } from "../services/api";
 
 function LoginPage() {
   const navigate = useNavigate();
@@ -76,6 +76,10 @@ function LoginPage() {
     return className;
   }
 
+  function handleGoogleClick() {
+    window.location.href = `${API_ORIGIN}/api/auth/google`;
+  }
+
   return (
     <main className="mx-auto grid min-h-[calc(100vh-96px)] max-w-7xl items-center gap-8 px-4 py-10 sm:px-6 lg:grid-cols-2 lg:px-8">
       {status.success && (
@@ -125,6 +129,25 @@ function LoginPage() {
               {item}
             </button>
           ))}
+        </div>
+
+        <button
+          type="button"
+          onClick={handleGoogleClick}
+          className="mt-6 flex w-full items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white px-5 py-3 font-black text-slate-800 transition hover:bg-slate-50"
+        >
+          <span className="grid h-6 w-6 place-items-center rounded-full border border-slate-200 text-sm font-black text-blue-600">
+            G
+          </span>
+          Continue with Google
+        </button>
+
+        <div className="mt-5 flex items-center gap-3">
+          <div className="h-px flex-1 bg-slate-200" />
+          <span className="text-xs font-black uppercase tracking-wide text-slate-400">
+            or
+          </span>
+          <div className="h-px flex-1 bg-slate-200" />
         </div>
 
         <form onSubmit={handleSubmit} className="mt-8 space-y-4">

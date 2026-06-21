@@ -3,6 +3,18 @@ const jwt = require("jsonwebtoken");
 
 const User = require("../models/User");
 
+function createToken(userId) {
+  return jwt.sign(
+    {
+      id: userId,
+    },
+    process.env.JWT_SECRET,
+    {
+      expiresIn: "7d",
+    }
+  );
+}
+
 const registerUser = async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -23,15 +35,7 @@ const registerUser = async (req, res) => {
       password: hashedPassword,
     });
 
-    const token = jwt.sign(
-      {
-        id: user._id,
-      },
-      process.env.JWT_SECRET,
-      {
-        expiresIn: "7d",
-      }
-    );
+    const token = createToken(user._id);
 
     res.status(201).json({
       message: "User registered successfully",
@@ -57,10 +61,13 @@ const loginUser = async (req, res) => {
       });
     }
 
-    const isMatch = await bcrypt.compare(
-      password,
-      user.password
-    );
+    if (!user.password) {
+      return res.status(400).json({
+        message: "Please continue with Google for this account",
+      });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
 
     if (!isMatch) {
       return res.status(400).json({
@@ -68,15 +75,7 @@ const loginUser = async (req, res) => {
       });
     }
 
-    const token = jwt.sign(
-      {
-        id: user._id,
-      },
-      process.env.JWT_SECRET,
-      {
-        expiresIn: "7d",
-      }
-    );
+    const token = createToken(user._id);
 
     res.status(200).json({
       message: "Login successful",
@@ -90,7 +89,21 @@ const loginUser = async (req, res) => {
   }
 };
 
+const googleCallback = async (req, res) => {
+  try {
+    const token = createToken(req.user._id);
+    const user = encodeURIComponent(JSON.stringify(req.user));
+    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+
+    res.redirect(`${frontendUrl}/auth/google/success?token=${token}&user=${user}`);
+  } catch (error) {
+    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+    res.redirect(`${frontendUrl}/login?error=google-auth-failed`);
+  }
+};
+
 module.exports = {
   registerUser,
   loginUser,
+  googleCallback,
 };

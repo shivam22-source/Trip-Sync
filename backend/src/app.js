@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const { allowedOrigins } = require("./config/cors");
+const passport = require("./config/passport");
 
 const app = express();
 const authRoutes = require("./routes/authRoutes");
@@ -20,6 +21,7 @@ app.use(cors({
 app.use(express.json({ limit: "5mb" }));
 
 app.use(cookieParser());
+app.use(passport.initialize());
 
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
