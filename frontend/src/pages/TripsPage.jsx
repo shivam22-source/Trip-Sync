@@ -170,6 +170,23 @@ function TripsPage() {
   }
 
   const visibleTrips = useMemo(() => trips, [trips]);
+  const tripMetrics = useMemo(() => {
+    const openTrips = visibleTrips.filter((trip) => trip.status === "open").length;
+    const destinationCount = new Set(
+      visibleTrips.map((trip) => trip.destination?.trim()).filter(Boolean)
+    ).size;
+    const seatsListed = visibleTrips.reduce(
+      (total, trip) => total + Number(trip.maxMembers || 0),
+      0
+    );
+
+    return [
+      { label: "Matching trips", value: visibleTrips.length },
+      { label: "Open to join", value: openTrips },
+      { label: "Destinations", value: destinationCount },
+      { label: "Seats listed", value: seatsListed },
+    ];
+  }, [visibleTrips]);
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -194,6 +211,22 @@ function TripsPage() {
         >
           Create trip
         </button>
+        </div>
+
+        <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {tripMetrics.map((metric) => (
+            <div
+              key={metric.label}
+              className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4"
+            >
+              <p className="text-2xl font-black text-slate-950">
+                {status.loading ? "--" : metric.value}
+              </p>
+              <p className="mt-1 text-xs font-black uppercase tracking-[0.14em] text-slate-500">
+                {metric.label}
+              </p>
+            </div>
+          ))}
         </div>
       </section>
 

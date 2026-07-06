@@ -20,7 +20,7 @@ function getGeminiModel(temperature) {
     model: process.env.GEMINI_MODEL,
     generationConfig: {
       temperature,
-      responseimagetype: "application/json",
+      responseMimeType: "application/json",
     },
   });
 }
@@ -56,7 +56,7 @@ async function extractReceiptDataFromUrl(receiptImage) {
     {
       inlineData: {
         data: base64Image,
-        imagetype,
+        mimeType: imagetype,
       },
     },
     {
