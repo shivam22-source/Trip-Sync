@@ -14,7 +14,7 @@ const notificationRoutes = require("./routes/notification.routes");
 const aiRoutes = require("./routes/ai.routes");
 
 const swaggerUi = require("swagger-ui-express");
-const swaggerSpec = require("./src/config/swagger");
+const swaggerSpec = require("./config/swagger");
 
 app.use(cors({
     origin: allowedOrigins,
