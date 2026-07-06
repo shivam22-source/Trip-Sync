@@ -1,0 +1,24 @@
+config:
+  target: "https://trip-sync-botj.onrender.com"
+
+  phases:
+    - duration: 60
+      arrivalRate: 5
+
+    - duration: 60
+      arrivalRate: 10
+
+    - duration: 60
+      arrivalRate: 20
+
+scenarios:
+  - name: Public API Test
+
+    flow:
+      - get:
+          url: "/api/trips"
+
+      - think: 1
+
+      - get:
+          url: "/"

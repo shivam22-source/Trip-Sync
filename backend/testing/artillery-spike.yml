@@ -1,0 +1,24 @@
+config:
+  target: "https://trip-sync-botj.onrender.com"
+
+  phases:
+    - duration: 20
+      arrivalRate: 5
+
+    - duration: 20
+      arrivalRate: 100
+
+    - duration: 20
+      arrivalRate: 5
+
+scenarios:
+  - name: Spike Test
+
+    flow:
+      - get:
+          url: "/api/trips"
+
+      - think: 1
+
+      - get:
+          url: "/"

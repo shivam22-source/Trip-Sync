@@ -1,0 +1,17 @@
+config:
+  target: "https://trip-sync-botj.onrender.com"
+
+  phases:
+    - duration: 60
+      arrivalRate: 5
+
+scenarios:
+  - name: Expenses
+
+    flow:
+
+      - get:
+          url: "/api/expenses/6a4b51b4b945d3ef2e354b1b"
+
+          headers:
+            Authorization: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhNGMwMTBkYjcwYzUzOGU0MDlmYjgzOSIsImlhdCI6MTc4MzM2NjY1MiwiZXhwIjoxNzgzOTcxNDUyfQ.StpgVKojgvyw7y2VKo_HeStBNJxUFSF_syLQaGMyWGg"

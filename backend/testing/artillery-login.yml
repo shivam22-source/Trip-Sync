@@ -1,0 +1,22 @@
+config:
+  target: "https://trip-sync-botj.onrender.com"
+
+  phases:
+    - duration: 60
+      arrivalRate: 5
+
+    - duration: 60
+      arrivalRate: 10
+
+scenarios:
+  - name: Login Test
+
+    flow:
+
+      - post:
+
+          url: "/api/auth/login"
+
+          json:
+            email: "shradha122@gmail.com"
+            password: "123456"
