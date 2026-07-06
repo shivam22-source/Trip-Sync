@@ -14,6 +14,12 @@ const {
 
 const router = express.Router();
 
+function redirectGoogleFailure(res) {
+  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+
+  return res.redirect(`${frontendUrl}/login?error=google-auth-failed`);
+}
+
 router.post("/register", validate(registerSchema), registerUser);
 
 router.post("/login", validate(loginSchema), loginUser);
@@ -28,10 +34,16 @@ router.get(
 
 router.get(
   "/google/callback",
-  passport.authenticate("google", {
-    failureRedirect: `${process.env.FRONTEND_URL || "http://localhost:5173"}/login`,
-    session: false,
-  }),
+  (req, res, next) => {
+    passport.authenticate("google", { session: false }, (error, user) => {
+      if (error || !user) {
+        return redirectGoogleFailure(res);
+      }
+
+      req.user = user;
+      return next();
+    })(req, res, next);
+  },
   googleCallback
 );
 

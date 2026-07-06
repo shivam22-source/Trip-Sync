@@ -92,7 +92,14 @@ const loginUser = async (req, res) => {
 const googleCallback = async (req, res) => {
   try {
     const token = createToken(req.user._id);
-    const user = encodeURIComponent(JSON.stringify(req.user));
+    const user = encodeURIComponent(
+      JSON.stringify({
+        _id: req.user._id,
+        name: req.user.name,
+        email: req.user.email,
+        profilePhoto: req.user.profilePhoto,
+      })
+    );
     const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
 
     res.redirect(`${frontendUrl}/auth/google/success?token=${token}&user=${user}`);
