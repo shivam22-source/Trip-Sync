@@ -14,7 +14,7 @@ const notificationRoutes = require("./routes/notification.routes");
 const aiRoutes = require("./routes/ai.routes");
 
 const swaggerUi = require("swagger-ui-express");
-const swaggerSpec = require("./config/swagger");
+const swaggerSpec = require("./src/config/swagger");
 
 app.use(cors({
     origin: allowedOrigins,
@@ -26,7 +26,7 @@ app.use(express.json({ limit: "5mb" }));
 app.use(cookieParser());
 app.use(passport.initialize());
 
-app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
 
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
