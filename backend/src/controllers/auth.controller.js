@@ -92,8 +92,8 @@ const loginUser = async (req, res) => {
 const googleCallback = async (req, res) => {
   try {
     const token = createToken(req.user._id);
-    const user = encodeURIComponent(
-      JSON.stringify({
+    const user = encodeURIComponent(  //Making info encoded safety
+      JSON.stringify({//object to string
         _id: req.user._id,
         name: req.user.name,
         email: req.user.email,

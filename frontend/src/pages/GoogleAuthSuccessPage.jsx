@@ -4,7 +4,7 @@ import { setSession } from "../services/api";
 
 function GoogleAuthSuccessPage() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams] = useSearchParams(); // Url came from auth controller ?token=....,?user=....
 
   useEffect(() => {
     const token = searchParams.get("token");
@@ -16,7 +16,7 @@ function GoogleAuthSuccessPage() {
     }
 
     try {
-      const user = JSON.parse(rawUser);
+      const user = JSON.parse(decodeURIComponent(rawUser));
       setSession({ token, user });
       navigate("/profile");
     } catch {
