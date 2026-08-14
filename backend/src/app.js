@@ -1,6 +1,9 @@
 const express = require("express");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
+const helmet = require("helmet");
+const mongoSanitize = require("express-mongo-sanitize");
+const xssClean = require("xss-clean");
 const { allowedOrigins } = require("./config/cors");
 const passport = require("./config/passport");
 
@@ -21,7 +24,11 @@ app.use(cors({
     credentials: true,
 }));
 
+app.use(helmet());
 app.use(express.json({ limit: "5mb" }));
+app.use(express.urlencoded({ extended: true }));
+app.use(mongoSanitize());
+app.use(xssClean());
 
 app.use(cookieParser());
 app.use(passport.initialize());

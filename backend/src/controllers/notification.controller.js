@@ -92,7 +92,7 @@ async (req, res) => {
     });
   }
 };
-
+//socket io with notification controller but mongodb remain source of truth
 const markNotificationRead =
 async (req, res) => {
 

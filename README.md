@@ -319,6 +319,35 @@ React hooks → reusable frontend logic
 
 This separation keeps the system debuggable and consistent. AI output is converted into normal app data, so itinerary plans, compatibility scores, and extracted expenses stay easy to inspect and explain.
 
+### Trip Cache Flow
+Trip details are cached in Redis using `trip:<tripId>` so repeated reads stay fast.
+
+```txt
+GET /api/trips/:id
+    ↓
+Redis GET
+   ├─ HIT  → return cached trip
+   └─ MISS → load from MongoDB, then Redis SET
+```
+
+When trip data changes, the cache entry is cleared so the next read always rebuilds from MongoDB.
+
+```txt
+MongoDB change
+    ↓
+accept member / AI itinerary save / delete trip
+    ↓
+Redis DEL trip:<tripId>
+```
+
+This keeps reads fast while making sure write updates stay correct.
+
+### Production Hardening
+- `helmet()` adds secure HTTP headers
+- `express-rate-limit` protects login and register from brute-force attempts
+- `express-mongo-sanitize` blocks Mongo operator injection
+- `xss-clean` helps strip unsafe input before saving
+
 ---
 
 ## Validation
@@ -332,6 +361,36 @@ Joi schemas validate critical write endpoints before data reaches the controller
 - `POST /api/expenses/:tripId/settle`
 
 Invalid requests return `400` with a clear error message.
+
+---
+
+## Database Indexes
+
+The following indexes are added to keep common reads and lookups fast:
+
+### Trips
+- `admin + createdAt`
+- `destination + createdAt`
+- `city + createdAt`
+- `status + createdAt`
+
+### Users
+- `email`
+- `username + createdAt`
+
+### Notifications
+- `receiver + createdAt`
+
+### Messages
+- `tripId + createdAt`
+
+### Expenses
+- `tripId + createdAt`
+- `tripId + paidBy + createdAt`
+
+### Join Requests
+- `tripId + status`
+- `tripId + userId`
 
 ---
 

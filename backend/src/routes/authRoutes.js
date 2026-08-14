@@ -1,4 +1,5 @@
 const express = require("express");
+const rateLimit = require("express-rate-limit");
 const passport = require("../config/passport");
 const validate = require("../middleware/validate.middleware");
 const {
@@ -14,15 +15,25 @@ const {
 
 const router = express.Router();
 
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    message: "Too many login attempts. Please try again later.",
+  },
+});
+
 function redirectGoogleFailure(res) {
   const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
 
   return res.redirect(`${frontendUrl}/login?error=google-auth-failed`);
 }
 
-router.post("/register", validate(registerSchema), registerUser);
+router.post("/register", authLimiter, validate(registerSchema), registerUser);
 
-router.post("/login", validate(loginSchema), loginUser);
+router.post("/login", authLimiter, validate(loginSchema), loginUser);
 
 router.get(
   "/google",

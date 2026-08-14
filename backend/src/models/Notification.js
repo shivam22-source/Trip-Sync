@@ -42,10 +42,12 @@ const notificationSchema =
       },
     },
 
-    {
-      timestamps: true,
-    }
+  {
+    timestamps: true,
+  }
   );
+
+notificationSchema.index({ receiver: 1, createdAt: -1 });
 
 module.exports =
   mongoose.model(

@@ -35,6 +35,7 @@ router.post(
 );
 
 // AI receipt extraction(OCR)
+
 router.post(
   "/:tripId/extract-receipt",
   protect,

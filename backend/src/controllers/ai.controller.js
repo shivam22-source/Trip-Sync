@@ -1,7 +1,9 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
+const redis = require("../config/redis");
 const Trip = require("../models/Trip");
 const Member = require("../models/Member");
 const axios = require("axios");
+
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
@@ -42,7 +44,7 @@ function limitScore(value) {
 
   return score;
 }
-
+//Using Gemini api at all
 async function extractReceiptDataFromUrl(receiptImage) {
   // Cloudinary gives us a URL. Gemini needs the image bytes as base64.
   const imageResponse = await axios.get(receiptImage, {
@@ -231,6 +233,7 @@ Return only valid JSON in this exact shape:
       generatedAt: new Date(),
     };
     await trip.save();
+    await redis.del(`trip:${tripId}`);
 
     res.status(200).json({
       success: true,
@@ -260,6 +263,9 @@ Return only valid JSON in this exact shape:
     });
   }
 };
+
+
+
 
 const extractReceiptExpense = async (req, res) => {
   try {

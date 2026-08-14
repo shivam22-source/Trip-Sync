@@ -53,4 +53,7 @@ const expenseSchema = new mongoose.Schema(
   }
 );
 
+expenseSchema.index({ tripId: 1, createdAt: -1 });
+expenseSchema.index({ tripId: 1, paidBy: 1, createdAt: -1 });
+
 module.exports = mongoose.model("Expense", expenseSchema);

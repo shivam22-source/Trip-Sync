@@ -124,4 +124,9 @@ const tripSchema = new mongoose.Schema(
   }
 );
 
+tripSchema.index({ admin: 1, createdAt: -1 });
+tripSchema.index({ destination: 1, createdAt: -1 });
+tripSchema.index({ city: 1, createdAt: -1 });
+tripSchema.index({ status: 1, createdAt: -1 });
+
 module.exports = mongoose.model("Trip", tripSchema);

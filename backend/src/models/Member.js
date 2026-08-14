@@ -36,4 +36,7 @@ const memberSchema = new mongoose.Schema(
   }
 );
 
+memberSchema.index({ tripId: 1, status: 1 });
+memberSchema.index({ tripId: 1, userId: 1 });
+
 module.exports = mongoose.model("Member", memberSchema);

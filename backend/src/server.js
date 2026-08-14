@@ -1,4 +1,6 @@
 require("dotenv").config();
+require("./config/redis");
+
 
 const http = require("http");
 const mongoose = require("mongoose");
