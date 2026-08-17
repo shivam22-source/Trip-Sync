@@ -28,6 +28,7 @@ const notificationSchema =
           "request-rejected",
           "expense-added",
           "payment-settled",
+          "trip-start-reminder",
         ],
       },
 

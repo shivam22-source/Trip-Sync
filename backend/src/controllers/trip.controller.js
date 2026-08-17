@@ -1,6 +1,9 @@
 // ===============================
 // Required Models & Utilities
 // ===============================
+const {
+  scheduleTripReminder,
+} = require("../jobs/reminder.job")
 
 //Redis config
 const redis =require("../config/redis")
@@ -372,6 +375,14 @@ const createTrip = async (req, res) => {
       // Admin automatically becomes first member
       currentMembers: [req.user.id],
     });
+
+
+    const reminderTime = new Date(trip.startDate);
+    reminderTime.setDate(reminderTime.getDate() - 1);
+    const delay = reminderTime.getTime() - Date.now();
+    if (delay > 0) {
+  await scheduleTripReminder(trip._id, delay);
+}
 
 
     // ----------------------------------
