@@ -532,23 +532,27 @@ const getTrips = async (req, res) => {
 
 const getSingleTrip = async (req, res) => {
   try {
-
-    // Find trip by id
-    // populate() replaces ObjectId with actual document.
-
     const tripId = req.params.id;
-
     const cacheKey = `trip:${tripId}`;
-
-    const cachedTrip = await redis.get(cacheKey);
-
 
     let trip;
 
-    if (cachedTrip) {
-      console.log("CACHE HIT");
-      trip = JSON.parse(cachedTrip);
-    } else {
+    // 1. Try Redis
+    try {
+      const cachedTrip = await redis.get(cacheKey);
+
+      if (cachedTrip) {
+        console.log("CACHE HIT");
+
+        // Convert cached JSON back into a Mongoose document.
+        trip = Trip.hydrate(JSON.parse(cachedTrip));
+      }
+    } catch (error) {
+      console.error("Redis cache read failed:", error.message);
+    }
+
+    // 2. Cache miss → MongoDB
+    if (!trip) {
       console.log("CACHE MISS");
 
       trip = await Trip.findById(tripId)
@@ -560,30 +564,45 @@ const getSingleTrip = async (req, res) => {
         });
       }
 
-      await redis.set(
-        cacheKey,
-        JSON.stringify(trip),
-        "EX",
-        300
-      );
-    }
-    // Trip doesn't exist
-    if (!trip) {
-      return res.status(404).json({
-        message: "Trip not found",
-      });
+      // Cache failure should NOT break the API.
+      try {
+        await redis.set(
+          cacheKey,
+          JSON.stringify(trip),
+          "EX",
+          300
+        );
+      } catch (error) {
+        console.error("Redis cache write failed:", error.message);
+      }
     }
 
-    // By default nobody can see
-    // private member information.
+    // 3. Determine access
     let isAllowedToSeeMembers = false;
 
-    // If current user is trip admin,
-    // allow access immediately.
-    if (req.user && trip.admin._id.toString() === req.user.id) {
+    const isAdmin =
+      req.user &&
+      trip.admin._id.toString() === req.user.id;
+
+    if (isAdmin) {
       isAllowedToSeeMembers = true;
     }
 
+    let member = null;
+
+    if (req.user) {
+      member = await Member.findOne({
+        tripId: trip._id,
+        userId: req.user.id,
+        status: "accepted",
+      });
+
+      if (member) {
+        isAllowedToSeeMembers = true;
+      }
+    }
+
+    // 4. Populate private members only when allowed
     if (isAllowedToSeeMembers) {
       await Trip.populate(trip, {
         path: "currentMembers",
@@ -592,60 +611,30 @@ const getSingleTrip = async (req, res) => {
       });
     }
 
-    let member = null;
-
-    // If user is logged in,
-    // check whether they are an accepted member.
-    if (req.user) {
-      member = await Member.findOne({
-        tripId: trip._id,
-        userId: req.user.id,
-        status: "accepted",
-      });
-    }
-
-    // Accepted members can also
-    // see private trip information.
-    if (member) {
-      isAllowedToSeeMembers = true;
-    }
-
+    // 5. Convert to normal object
     const responseTrip = trip.toObject();
 
-    // Guest users should not see
-    // member list or AI itinerary.
+    // 6. Hide private information from guests
     if (!isAllowedToSeeMembers) {
       responseTrip.currentMembers = [];
       responseTrip.aiItinerary = null;
     }
 
-    // Default viewer information.
+    // 7. Viewer information
     responseTrip.viewerRole = "guest";
     responseTrip.viewerRequestStatus = "none";
 
-    // Logged in user
     if (req.user && req.user.id) {
-
-      // Admin
-      if (trip.admin._id.toString() === req.user.id) {
-
+      if (isAdmin) {
         responseTrip.viewerRole = "admin";
         responseTrip.viewerRequestStatus = "accepted";
-
       } else {
-
-        // Check whether current user
-        // has already requested to join.
         const viewerMember = await Member.findOne({
           tripId: trip._id,
           userId: req.user.id,
         });
 
         if (viewerMember) {
-
-          // Frontend can now know
-          // whether request is
-          // pending / accepted / rejected.
           responseTrip.viewerRole = "member";
           responseTrip.viewerRequestStatus =
             viewerMember.status;
@@ -653,14 +642,13 @@ const getSingleTrip = async (req, res) => {
       }
     }
 
-    res.status(200).json(responseTrip);
-
+    return res.status(200).json(responseTrip);
   } catch (error) {
+    console.error("GET SINGLE TRIP ERROR:", error);
 
-    res.status(500).json({
+    return res.status(500).json({
       message: error.message,
     });
-
   }
 };
 

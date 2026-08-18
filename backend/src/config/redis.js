@@ -3,6 +3,8 @@ const Redis = require("ioredis");
 const redis = new Redis({
     host: "localhost",
     port: 6379,
+
+  maxRetriesPerRequest: 3,
 });
 
 redis.on("connect", () => {

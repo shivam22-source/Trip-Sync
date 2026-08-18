@@ -4,6 +4,9 @@ const redis = require("../config/bullmq.redis");
 const connectMongoDB = require("../config/mongodb");
 const Trip = require("../models/Trip");
 const Notification = require("../models/Notification");
+const {
+  publishNotificationEvent,
+} = require("../services/realtime.service");
 
 
 async function startWorker() {
@@ -56,6 +59,10 @@ async function startWorker() {
           message: `Your trip "${trip.title}" starts tomorrow. Get ready!`,
         }))
       );
+
+      for (const receiver of receivers) {
+  await publishNotificationEvent(receiver);
+}
 
       console.log(
         `Reminder created for ${receivers.length} members`
