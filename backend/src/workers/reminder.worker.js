@@ -1,73 +1,81 @@
+require("dotenv").config();
 const { Worker } = require("bullmq");
 const redis = require("../config/bullmq.redis");
-
+const connectMongoDB = require("../config/mongodb");
 const Trip = require("../models/Trip");
 const Notification = require("../models/Notification");
 
-const worker = new Worker(
-  "trip-reminders",
-  async (job) => {
-    console.log(`Processing job: ${job.id}`);
 
-    const { tripId } = job.data;
+async function startWorker() {
+  await connectMongoDB();
 
-    const trip = await Trip.findById(tripId);
+  const worker = new Worker(
+    "trip-reminders",
+    async (job) => {
+      const { tripId } = job.data;
 
-    if (!trip) {
-      throw new Error(`Trip not found: ${tripId}`);
-    }
+      console.log(`Processing reminder for trip ${tripId}`);
 
-    const receivers = trip.currentMembers;
+      const trip = await Trip.findById(tripId);
 
-    if (!receivers.length) {
-      console.log(`No members to notify for trip ${tripId}`);
-      return;
-    }
+      if (!trip) {
+        throw new Error(`Trip not found: ${tripId}`);
+      }
 
-    const message = `Your trip "${trip.title}" starts tomorrow. Get ready!`;
+      if (!trip.currentMembers.length) {
+        console.log(`No members in trip ${tripId}`);
+        return;
+      }
 
-    const existingNotifications = await Notification.find({
-      tripId: trip._id,
-      type: "trip-start-reminder",
-      receiver: { $in: receivers },
-    }).select("receiver");
+      const existingNotifications = await Notification.find({
+        tripId: trip._id,
+        type: "trip-start-reminder",
+        receiver: { $in: trip.currentMembers },
+      }).select("receiver");
 
-    const alreadyNotified = new Set(
-      existingNotifications.map((notification) =>
-        notification.receiver.toString()
-      )
-    );
+      const alreadyNotified = new Set(
+        existingNotifications.map((notification) =>
+          notification.receiver.toString()
+        )
+      );
 
-    const pendingReceivers = receivers.filter(
-      (receiver) => !alreadyNotified.has(receiver.toString())
-    );
+      const receivers = trip.currentMembers.filter(
+        (memberId) => !alreadyNotified.has(memberId.toString())
+      );
 
-    if (pendingReceivers.length) {
+      if (!receivers.length) {
+        console.log(`Reminder already sent for trip ${tripId}`);
+        return;
+      }
+
       await Notification.insertMany(
-        pendingReceivers.map((receiver) => ({
+        receivers.map((receiver) => ({
           receiver,
           tripId: trip._id,
           type: "trip-start-reminder",
-          message,
+          message: `Your trip "${trip.title}" starts tomorrow. Get ready!`,
         }))
       );
+
+      console.log(
+        `Reminder created for ${receivers.length} members`
+      );
+    },
+    {
+      connection: redis,
     }
+  );
 
-    console.log(
-      `Reminder processed for trip ${tripId}. Notifications created: ${pendingReceivers.length}`
+  worker.on("completed", (job) => {
+    console.log(`Job ${job.id} completed`);
+  });
+
+  worker.on("failed", (job, error) => {
+    console.error(
+      `Job ${job?.id} failed:`,
+      error.message
     );
-  },
-  {
-    connection: redis,
-  }
-);
+  });
+}
 
-worker.on("completed", (job) => {
-  console.log(`Job ${job.id} completed`);
-});
-
-worker.on("failed", (job, error) => {
-  console.error(`Job ${job?.id} failed:`, error.message);
-});
-
-module.exports = worker;
+startWorker();

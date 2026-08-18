@@ -199,6 +199,9 @@ const createTrip = async (req, res) => {
     // Get all data from frontend
     // ----------------------------------
 
+
+
+   
     const {
       title,
       destination,
@@ -376,13 +379,17 @@ const createTrip = async (req, res) => {
       currentMembers: [req.user.id],
     });
 
+    //testing delay for 10s
+ const delay = 10000;
+await scheduleTripReminder(trip._id, delay);
 
-    const reminderTime = new Date(trip.startDate);
-    reminderTime.setDate(reminderTime.getDate() - 1);
-    const delay = reminderTime.getTime() - Date.now();
-    if (delay > 0) {
-  await scheduleTripReminder(trip._id, delay);
-}
+
+//     const reminderTime = new Date(trip.startDate);
+//     reminderTime.setDate(reminderTime.getDate() - 1);
+//     const delay = reminderTime.getTime() - Date.now();
+//     if (delay > 0) {
+//   await scheduleTripReminder(trip._id, delay);
+// }
 
 
     // ----------------------------------

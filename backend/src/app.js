@@ -2,10 +2,11 @@ const express = require("express");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const helmet = require("helmet");
-const mongoSanitize = require("express-mongo-sanitize");
-const xssClean = require("xss-clean");
+const mongoSanitize = require("@exortek/express-mongo-sanitize");
+const xssClean = require("./middleware/xss.middleware");
 const { allowedOrigins } = require("./config/cors");
 const passport = require("./config/passport");
+
 
 const app = express();
 const authRoutes = require("./routes/authRoutes");
