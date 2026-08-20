@@ -1,5 +1,17 @@
 const reminderQueue = require("../queues/reminder.queue");
 
+function withRedisTimeout(operation, label) {
+  return Promise.race([
+    operation,
+    new Promise((_, reject) =>
+      setTimeout(
+        () => reject(new Error(`${label} timed out. Is Redis running?`)),
+        1500
+      )
+    ),
+  ]);
+}
+
 //JOB ID
 function getReminderJobId(tripId) {
   return `trip-reminder-${tripId}`;
@@ -10,21 +22,25 @@ function getReminderJobId(tripId) {
 async function scheduleTripReminder(tripId, delay) {
   const jobId =getReminderJobId(tripId);
 
-  const job = await reminderQueue.add(
-  "trip-start-reminder",
-  {
-    tripId,
-  },
-  {
-    jobId,
-    delay,
-    attempts: 3,
-    backoff: {
-      type: "exponential",
-      delay: 1000,
-    },
-  }
-);
+  const job = await withRedisTimeout(
+    reminderQueue.add(
+      "trip-start-reminder",
+      {
+        tripId,
+      },
+      {
+        jobId,
+        delay,
+        attempts: 3,
+        backoff: {
+          type: "exponential",
+          delay: 1000,
+        },
+      }
+    ),
+    "Reminder scheduling"
+  );
+
   console.log(`Reminder job scheduled: ${job.id}`);
 
   return job;
@@ -34,7 +50,10 @@ async function scheduleTripReminder(tripId, delay) {
 async function cancelTripReminder(tripId) {
   const jobId = getReminderJobId(tripId);
 
-  const job = await reminderQueue.getJob(jobId);
+  const job = await withRedisTimeout(
+    reminderQueue.getJob(jobId),
+    "Reminder lookup"
+  );
 
   if (!job) {
     console.log(`No reminder job found for trip ${tripId}`);

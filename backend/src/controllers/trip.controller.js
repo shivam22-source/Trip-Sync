@@ -381,7 +381,11 @@ const createTrip = async (req, res) => {
 
     //testing delay for 10s
  const delay = 10000;
-await scheduleTripReminder(trip._id, delay);
+try {
+  await scheduleTripReminder(trip._id, delay);
+} catch (error) {
+  console.warn("Trip reminder scheduling failed:", error.message);
+}
 
 
 //     const reminderTime = new Date(trip.startDate);
@@ -531,7 +535,9 @@ const getTrips = async (req, res) => {
 
 
 const getSingleTrip = async (req, res) => {
+    console.time("single-trip-total");
   try {
+    
     const tripId = req.params.id;
     const cacheKey = `trip:${tripId}`;
 
@@ -539,7 +545,9 @@ const getSingleTrip = async (req, res) => {
 
     // 1. Try Redis
     try {
+      console.time("redis-get");
       const cachedTrip = await redis.get(cacheKey);
+      console.timeEnd("redis-get");
 
       if (cachedTrip) {
         console.log("CACHE HIT");
@@ -554,9 +562,11 @@ const getSingleTrip = async (req, res) => {
     // 2. Cache miss → MongoDB
     if (!trip) {
       console.log("CACHE MISS");
+      console.time("mongo-trip");
 
       trip = await Trip.findById(tripId)
         .populate("admin", "name email");
+      console.timeEnd("mongo-trip");
 
       if (!trip) {
         return res.status(404).json({
@@ -578,29 +588,21 @@ const getSingleTrip = async (req, res) => {
     }
 
     // 3. Determine access
-    let isAllowedToSeeMembers = false;
-
     const isAdmin =
       req.user &&
       trip.admin._id.toString() === req.user.id;
 
-    if (isAdmin) {
-      isAllowedToSeeMembers = true;
-    }
+    let viewerMember = null;
 
-    let member = null;
-
-    if (req.user) {
-      member = await Member.findOne({
+    if (req.user && !isAdmin) {
+      viewerMember = await Member.findOne({
         tripId: trip._id,
         userId: req.user.id,
-        status: "accepted",
       });
-
-      if (member) {
-        isAllowedToSeeMembers = true;
-      }
     }
+
+    const isAllowedToSeeMembers =
+      isAdmin || viewerMember?.status === "accepted";
 
     // 4. Populate private members only when allowed
     if (isAllowedToSeeMembers) {
@@ -624,25 +626,19 @@ const getSingleTrip = async (req, res) => {
     responseTrip.viewerRole = "guest";
     responseTrip.viewerRequestStatus = "none";
 
-    if (req.user && req.user.id) {
+    if (req.user) {
       if (isAdmin) {
         responseTrip.viewerRole = "admin";
         responseTrip.viewerRequestStatus = "accepted";
-      } else {
-        const viewerMember = await Member.findOne({
-          tripId: trip._id,
-          userId: req.user.id,
-        });
-
-        if (viewerMember) {
-          responseTrip.viewerRole = "member";
-          responseTrip.viewerRequestStatus =
-            viewerMember.status;
-        }
+      } else if (viewerMember) {
+        responseTrip.viewerRole = "member";
+        responseTrip.viewerRequestStatus = viewerMember.status;
       }
     }
-
+    
+console.timeEnd("single-trip-total");
     return res.status(200).json(responseTrip);
+    
   } catch (error) {
     console.error("GET SINGLE TRIP ERROR:", error);
 
@@ -899,7 +895,11 @@ const acceptMember = async (req, res) => {
 
     await trip.save();
 
-    await redis.del(`trip:${tripId}`);
+    try {
+      await redis.del(`trip:${tripId}`);
+    } catch (error) {
+      console.warn("Redis cache delete failed:", error.message);
+    }
 
     // Notify accepted user.
     await Notification.create({
@@ -1019,7 +1019,11 @@ const deleteTrip = async (req, res) => {
     await Message.deleteMany({ tripId: trip._id });
 
     await trip.deleteOne();
-    await redis.del(`trip:${req.params.id}`);
+    try {
+      await redis.del(`trip:${req.params.id}`);
+    } catch (error) {
+      console.warn("Redis cache delete failed:", error.message);
+    }
 
     res.status(200).json({
       message: "Trip deleted successfully",
