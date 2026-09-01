@@ -41,7 +41,12 @@ const notificationSchema =
         type: Boolean,
         default: false,
       },
+      emailSent: {
+  type: Boolean,
+  default: false,
+}
     },
+    
 
   {
     timestamps: true,

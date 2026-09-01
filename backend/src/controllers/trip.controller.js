@@ -192,16 +192,7 @@ function uploadBufferToCloudinary(file, folder) {
 // 7. Return created trip
 //
 const createTrip = async (req, res) => {
-
   try {
-
-    // ----------------------------------
-    // Get all data from frontend
-    // ----------------------------------
-
-
-
-   
     const {
       title,
       destination,
@@ -215,43 +206,20 @@ const createTrip = async (req, res) => {
       filters,
     } = req.body;
 
+    const parsedBudgetPerDay = parseJsonField(budgetPerDay, null);
+    const parsedFilters = parseJsonField(filters, {});
 
-    // Convert JSON strings into objects
-    const parsedBudgetPerDay = parseJsonField(
-      budgetPerDay,
-      null
-    );
-
-    const parsedFilters = parseJsonField(
-      filters,
-      {}
-    );
-
-
-    // FormData sends numbers as strings.
-    // Convert it into Number.
     const memberLimit = Number(maxMembers);
-
-    // Default image (empty)
     let coverImage = "";
-
-
-    // ----------------------------------
-    // Validate Required Fields
-    // ----------------------------------
 
     if (
       !title ||
       !title.trim() ||
-
       !destination ||
       !destination.trim() ||
-
       !startDate ||
       !endDate ||
-
       !memberLimit ||
-
       memberLimit < 2
     ) {
       return res.status(400).json({
@@ -260,97 +228,49 @@ const createTrip = async (req, res) => {
       });
     }
 
-
-    // ----------------------------------
-    // Upload Cover Image
-    // ----------------------------------
-
     if (req.file) {
-
-      // Folder name inside Cloudinary
       const uploadFolder = "tripsync/trip-covers";
 
-      // Upload image
-      const uploadResult =
-        await uploadBufferToCloudinary(
-          req.file,
-          uploadFolder
-        );
+      const uploadResult = await uploadBufferToCloudinary(
+        req.file,
+        uploadFolder
+      );
 
-      // Save image URL only
       coverImage = uploadResult.secure_url;
     }
 
+    let finalBudgetPerDay = budgetRanges.medium;
 
-    // ----------------------------------
-    // Decide Budget Range
-    // ----------------------------------
-
-    // Default budget
-    let finalBudgetPerDay =
-      budgetRanges.medium;
-
-    // If user selected low/medium/high
     if (budgetRanges[budget]) {
-      finalBudgetPerDay =
-        budgetRanges[budget];
+      finalBudgetPerDay = budgetRanges[budget];
     }
 
-    // Custom budget has higher priority
     if (
       parsedBudgetPerDay &&
       parsedBudgetPerDay.min &&
       parsedBudgetPerDay.max
     ) {
-      finalBudgetPerDay =
-        parsedBudgetPerDay;
+      finalBudgetPerDay = parsedBudgetPerDay;
     }
-
-
-    // ----------------------------------
-    // Default Trip Filters
-    // ----------------------------------
 
     let smokingAllowed = false;
     let drinkingAllowed = false;
     let genderPreference = "any";
 
-
-    // Enable smoking
-    if (
-      parsedFilters &&
-      parsedFilters.smokingAllowed
-    ) {
+    if (parsedFilters?.smokingAllowed) {
       smokingAllowed = true;
     }
 
-    // Enable drinking
-    if (
-      parsedFilters &&
-      parsedFilters.drinkingAllowed
-    ) {
+    if (parsedFilters?.drinkingAllowed) {
       drinkingAllowed = true;
     }
 
-    // Gender preference
-    if (
-      parsedFilters &&
-      parsedFilters.genderPreference
-    ) {
-      genderPreference =
-        parsedFilters.genderPreference;
+    if (parsedFilters?.genderPreference) {
+      genderPreference = parsedFilters.genderPreference;
     }
 
-
-    // ----------------------------------
-    // Save Trip
-    // ----------------------------------
-
     const trip = await Trip.create({
-
-      // Trip creator becomes admin
       admin: req.user.id,
-
       title,
       destination,
       description,
@@ -358,59 +278,47 @@ const createTrip = async (req, res) => {
       endDate,
       category,
       budget,
-
-      // Final calculated budget
       budgetPerDay: finalBudgetPerDay,
-
-      // Maximum members allowed
       maxMembers: memberLimit,
-
-      // Save all filters
       filters: {
         smokingAllowed,
         drinkingAllowed,
         genderPreference,
       },
-
-      // Cover image URL
       coverImage,
-
-      // Admin automatically becomes first member
       currentMembers: [req.user.id],
     });
 
-    //testing delay for 10s
- const delay = 10000;
-try {
-  await scheduleTripReminder(trip._id, delay);
-} catch (error) {
-  console.warn("Trip reminder scheduling failed:", error.message);
-}
+    const tripStartTime = new Date(trip.startDate).getTime();
 
+    if (Number.isNaN(tripStartTime)) {
+      throw new Error("Invalid trip start date");
+    }
 
-//     const reminderTime = new Date(trip.startDate);
-//     reminderTime.setDate(reminderTime.getDate() - 1);
-//     const delay = reminderTime.getTime() - Date.now();
-//     if (delay > 0) {
-//   await scheduleTripReminder(trip._id, delay);
-// }
+    const reminderTime =
+      tripStartTime - 24 * 60 * 60 * 1000;
 
+    const delay = reminderTime - Date.now();
 
-    // ----------------------------------
-    // Success Response
-    // ----------------------------------
+    try {
+      if (delay > 0) {
+        await scheduleTripReminder(trip._id, delay);
+      }
+    } catch (error) {
+      console.warn(
+        "Trip reminder scheduling failed:",
+        error.message
+      );
+    }
 
     res.status(201).json({
       message: "Trip created successfully",
       trip,
     });
-
   } catch (error) {
-
     res.status(500).json({
       message: error.message,
     });
-
   }
 };
 

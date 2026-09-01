@@ -1,13 +1,17 @@
 require("dotenv").config();
+
 const { Worker } = require("bullmq");
+
+const { sendMail } = require("../services/mail.service");
 const redis = require("../config/bullmq.redis");
 const connectMongoDB = require("../config/mongodb");
+
 const Trip = require("../models/Trip");
 const Notification = require("../models/Notification");
+
 const {
   publishNotificationEvent,
 } = require("../services/realtime.service");
-
 
 async function startWorker() {
   await connectMongoDB();
@@ -19,7 +23,10 @@ async function startWorker() {
 
       console.log(`Processing reminder for trip ${tripId}`);
 
-      const trip = await Trip.findById(tripId);
+      const trip = await Trip.findById(tripId).populate(
+        "currentMembers",
+        "name email"
+      );
 
       if (!trip) {
         throw new Error(`Trip not found: ${tripId}`);
@@ -30,42 +37,85 @@ async function startWorker() {
         return;
       }
 
+      const memberIds = trip.currentMembers.map(
+        (member) => member._id
+      );
+
       const existingNotifications = await Notification.find({
         tripId: trip._id,
         type: "trip-start-reminder",
-        receiver: { $in: trip.currentMembers },
-      }).select("receiver");
+        receiver: { $in: memberIds },
+      }).select("receiver emailSent");
 
-      const alreadyNotified = new Set(
-        existingNotifications.map((notification) =>
-          notification.receiver.toString()
-        )
+      const notificationMap = new Map(
+        existingNotifications.map((notification) => [
+          notification.receiver.toString(),
+          notification,
+        ])
       );
 
-      const receivers = trip.currentMembers.filter(
-        (memberId) => !alreadyNotified.has(memberId.toString())
-      );
+      for (const member of trip.currentMembers) {
+        const memberId = member._id.toString();
 
-      if (!receivers.length) {
-        console.log(`Reminder already sent for trip ${tripId}`);
-        return;
+        const existingNotification =
+          notificationMap.get(memberId);
+
+        // Notification does not exist yet
+        if (!existingNotification) {
+          const notification = await Notification.create({
+            receiver: member._id,
+            tripId: trip._id,
+            type: "trip-start-reminder",
+            message: `Your trip "${trip.title}" starts tomorrow. Get ready!`,
+            emailSent: false,
+          });
+
+          await publishNotificationEvent(member._id);
+
+          await sendMail({
+            to: member.email,
+            subject: `Trip reminder: ${trip.title}`,
+            text: `Your trip "${trip.title}" starts tomorrow. Get ready!`,
+          });
+
+          await Notification.findByIdAndUpdate(
+            notification._id,
+            { emailSent: true }
+          );
+
+          console.log(
+            `Reminder and email sent to ${member.email}`
+          );
+        }
+
+        // Notification exists but email was not sent
+        else if (!existingNotification.emailSent) {
+          await sendMail({
+            to: member.email,
+            subject: `Trip reminder: ${trip.title}`,
+            text: `Your trip "${trip.title}" starts tomorrow. Get ready!`,
+          });
+
+          await Notification.findByIdAndUpdate(
+            existingNotification._id,
+            { emailSent: true }
+          );
+
+          console.log(
+            `Email retry successful for ${member.email}`
+          );
+        }
+
+        // Notification and email already sent
+        else {
+          console.log(
+            `Reminder already completed for ${member.email}`
+          );
+        }
       }
 
-      await Notification.insertMany(
-        receivers.map((receiver) => ({
-          receiver,
-          tripId: trip._id,
-          type: "trip-start-reminder",
-          message: `Your trip "${trip.title}" starts tomorrow. Get ready!`,
-        }))
-      );
-
-      for (const receiver of receivers) {
-  await publishNotificationEvent(receiver);
-}
-
       console.log(
-        `Reminder created for ${receivers.length} members`
+        `Reminder processing completed for trip ${tripId}`
       );
     },
     {
