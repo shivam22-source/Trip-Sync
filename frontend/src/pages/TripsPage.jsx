@@ -369,7 +369,7 @@ function TripsPage() {
                     <span className="text-sm font-bold text-slate-700">Start</span>
                     <input
                       name="startDate"
-                      type="date"
+                      type="datetime-local"
                       value={form.startDate}
                       onChange={updateForm}
                       required
@@ -380,7 +380,7 @@ function TripsPage() {
                     <span className="text-sm font-bold text-slate-700">End</span>
                     <input
                       name="endDate"
-                      type="date"
+                      type="datetime-local"
                       value={form.endDate}
                       onChange={updateForm}
                       required
