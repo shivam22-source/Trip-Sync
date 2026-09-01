@@ -302,7 +302,7 @@ const createTrip = async (req, res) => {
 
     try {
       if (delay > 0) {
-        await scheduleTripReminder(trip._id, 10*1000);
+        await scheduleTripReminder(trip._id, delay);
       }
     } catch (error) {
       console.warn(
