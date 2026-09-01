@@ -1,13 +1,18 @@
 const Redis = require("ioredis");
 
 const redisOptions = {
-  host: "localhost",
-  port: 6379,
   maxRetriesPerRequest: null,
 };
 
-const publisher = new Redis(redisOptions);
-const subscriber = new Redis(redisOptions);
+const publisher = new Redis(
+  process.env.REDIS_URL || "redis://localhost:6379",
+  redisOptions
+);
+
+const subscriber = new Redis(
+  process.env.REDIS_URL || "redis://localhost:6379",
+  redisOptions
+);
 
 publisher.on("connect", () => {
   console.log("Realtime Redis publisher connected");
