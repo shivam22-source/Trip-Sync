@@ -133,6 +133,10 @@ async function startWorker() {
       error.message
     );
   });
+   return worker;
 }
+module.exports = { startWorker };
 
-startWorker();
+if (require.main === module) {
+  startWorker();
+}

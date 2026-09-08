@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "start": "node src/server.js",
-    "dev": "nodemon src/server.js"
+    "dev": "nodemon src/server.js",
+    "test": "jest --runInBand"
   },
   "keywords": [],
   "author": "",
@@ -39,6 +40,8 @@
   },
   "devDependencies": {
     "artillery": "^2.0.33",
+    "jest": "^30.5.1",
     "nodemon": "^3.1.14"
   }
+  
 }
