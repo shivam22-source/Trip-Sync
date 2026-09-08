@@ -1,8 +1,16 @@
+
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const redis = require("../config/redis");
 const Trip = require("../models/Trip");
 const Member = require("../models/Member");
 const axios = require("axios");
+
+const {
+  validateReceiptData,
+  validateCompatibilityData,
+  validateItineraryData,
+} = require("../validators/ai.validator");
+
 
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
@@ -27,23 +35,7 @@ function getGeminiModel(temperature) {
   });
 }
 
-function limitScore(value) {
-  let score = Number(value);
 
-  if (!score) {
-    score = 0;
-  }
-
-  if (score < 0) {
-    score = 0;
-  }
-
-  if (score > 100) {
-    score = 100;
-  }
-
-  return score;
-}
 //Using Gemini api at all
 async function extractReceiptDataFromUrl(receiptImage) {
   // Cloudinary gives us a URL. Gemini needs the image bytes as base64.
@@ -84,7 +76,9 @@ Return ONLY valid JSON in this exact format:
     throw new Error("AI did not return any response");
   }
 
-  return parseGeminiJson(content);
+const parsedData = parseGeminiJson(content);
+
+return validateReceiptData(parsedData);
 }
 
 function buildCompatibilityPrompt(trip, traveler) {
@@ -141,23 +135,11 @@ async function getAiCompatibilityScore(trip, traveler) {
     return null;
   }
 
-  const score = parseGeminiJson(content);
-  let label = score.label;
-  let reason = score.reason;
+ const score = validateCompatibilityData(
+  parseGeminiJson(content)
+);
 
-  if (!label) {
-    label = "medium";
-  }
-
-  if (!reason) {
-    reason = "AI reviewed this traveler against the trip details.";
-  }
-
-  return {
-    score: limitScore(score.score),
-    label,
-    reason,
-  };
+return score;
 }
 
 const generateTripPlan = async (req, res) => {
@@ -224,7 +206,9 @@ Return only valid JSON in this exact shape:
       });
     }
 
-    const tripPlan = parseGeminiJson(content);
+  const tripPlan = validateItineraryData(
+  parseGeminiJson(content)
+);
 
     trip.aiItinerary = {
       plan: tripPlan,
