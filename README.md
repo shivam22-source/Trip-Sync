@@ -471,7 +471,29 @@ git clone https://github.com/shivam22-source/Trip-Sync.git
 cd Trip-Sync
 ```
 
-### 2. Backend
+### 2. Start Redis with Docker
+
+TripSync uses Redis for caching and BullMQ background jobs. For local development, Redis runs as a Docker container so the host machine does not need a separate Redis installation.
+
+Make sure Docker Desktop is running, then from the project root run:
+
+```bash
+docker compose up -d redis
+```
+
+Check the container:
+
+```bash
+docker compose ps
+```
+
+Stop Redis when you are finished:
+
+```bash
+docker compose stop redis
+```
+
+### 3. Backend
 
 ```bash
 cd backend
@@ -501,10 +523,20 @@ Run the backend:
 npm run dev
 ```
 
-### 3. Frontend
+### 4. Background worker
+
+In a separate terminal, from `backend/`:
 
 ```bash
-cd ../frontend
+node src/workers/reminder.worker.js
+```
+
+### 5. Frontend
+
+In another terminal:
+
+```bash
+cd frontend
 npm install
 ```
 
@@ -526,6 +558,7 @@ Default local URLs:
 ```text
 Frontend: http://localhost:5173
 Backend:  http://localhost:5000
+Redis:    localhost:6379
 ```
 
 ---
