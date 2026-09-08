@@ -43,7 +43,11 @@ function validateAiOutput(schema, data) {
   });
 
   if (error) {
-    throw new Error(`Invalid AI response: ${error.message}`);
+    const validationError = new Error("AI returned an invalid response");
+    validationError.status = 502;
+    validationError.code = "AI_OUTPUT_INVALID";
+
+    throw validationError;
   }
 
   return value;

@@ -60,4 +60,27 @@ describe("AI output validation", () => {
     expect(result.days).toHaveLength(1);
     expect(result.days[0].day).toBe(1);
   });
+
+  test("rejects a compatibility score above 100", () => {
+  expect(() =>
+    validateCompatibilityData({
+      score: 150,
+      label: "high",
+      reason: "Good match",
+    })
+  ).toThrow();
+});
+
+test("marks invalid AI output as an upstream response error", () => {
+  try {
+    validateCompatibilityData({
+      score: 150,
+      label: "high",
+      reason: "Good match",
+    });
+  } catch (error) {
+    expect(error.status).toBe(502);
+    expect(error.code).toBe("AI_OUTPUT_INVALID");
+  }
+});
 });

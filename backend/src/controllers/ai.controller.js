@@ -16,13 +16,20 @@ const {
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 function parseGeminiJson(text) {
-  // Gemini may wrap JSON in markdown fences, so clean it before parsing.
   const cleanText = text
     .replace(/```json/gi, "")
     .replace(/```/g, "")
     .trim();
 
-  return JSON.parse(cleanText);
+  try {
+    return JSON.parse(cleanText);
+  } catch {
+    const parseError = new Error("AI returned invalid JSON");
+    parseError.status = 502;
+    parseError.code = "AI_OUTPUT_INVALID";
+
+    throw parseError;
+  }
 }
 
 function getGeminiModel(temperature) {
@@ -167,6 +174,7 @@ const generateTripPlan = async (req, res) => {
         message: "Only the trip admin can generate or update itinerary",
       });
     }
+
 
     const model = getGeminiModel(0.7);
 
@@ -315,6 +323,13 @@ const extractReceiptExpense = async (req, res) => {
         message: "Gemini quota exceeded",
       });
     }
+
+    if (error.code === "AI_OUTPUT_INVALID") {
+  return res.status(502).json({
+    success: false,
+    message: "AI returned an invalid receipt response. Please try again.",
+  });
+}
 
     if (error.status === 503) {
       return res.status(503).json({
