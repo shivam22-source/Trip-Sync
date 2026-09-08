@@ -4,103 +4,113 @@
 
 **Plan together. Travel together.**
 
-A full-stack MERN travel collaboration platform for creating group trips, splitting expenses, and staying in sync — in real time.
+A full-stack travel collaboration platform for group trips, realtime chat, shared expenses, and AI-assisted travel planning.
 
 [![Live Demo](https://img.shields.io/badge/Live%20Demo-trip--sync--smoky.vercel.app-black?style=flat-square)](https://trip-sync-smoky.vercel.app/)
-![Tech](https://img.shields.io/badge/Stack-MERN-blue?style=flat-square)
+![Stack](https://img.shields.io/badge/Stack-MERN-blue?style=flat-square)
 ![Realtime](https://img.shields.io/badge/Realtime-Socket.io-green?style=flat-square)
+![Tests](https://img.shields.io/badge/Tests-Jest-red?style=flat-square)
 
 </div>
 
 ---
 
-## What is TripSync?
+## Overview
 
-TripSync lets you create group trips, control who joins, chat with your travel crew, and keep expenses fair — all in one place.
+TripSync brings the main parts of a group trip into one application:
 
-It's built as a production-style learning project with real authentication, protected trip access, Cloudinary media uploads, Socket.io realtime features, Gemini-powered AI features, and a clean React + Tailwind frontend.
+- Create and manage private trips
+- Review and approve join requests
+- Chat with trip members in realtime
+- Upload receipts and split shared expenses
+- Track balances and settle payments
+- Generate AI-assisted itineraries and compatibility scores
 
-**Core loop:**
-```
-Create a trip → Accept members → Chat & plan → Split expenses → Settle up
+**Core flow:**
+
+```text
+Create trip → Approve members → Chat & plan → Split expenses → Settle up
 ```
 
 ---
 
 ## Features
 
-### AI Features
+### 🤖 AI-assisted features
+
 - AI itinerary planner for trip admins
 - AI compatibility score for pending join requests
 - AI receipt extraction for expense creation
+- Joi validation for AI-generated data before it is used by the application
 
-AI is used as an assistant, not as the source of truth. The final saved data still goes through normal backend models and validation.
+AI is an assistant, not the source of truth. Generated output is validated before being converted into normal application data.
 
-### 🔐 Authentication & Profiles
-- JWT-based auth with protected routes
-- Profile photo upload via Cloudinary
-- Travel preferences (smoking, drinking, gender preference)
+### 🔐 Authentication & access control
 
-### 🗺️ Trip Management
-- Create trips with destination, dates, budget range, max members, group rules, and a cover image
-- Filter trips by destination, category, budget, and travel preferences
-- Delete trips as the admin
+- JWT-based authentication
+- Protected routes and trip-level access control
+- Profile photo uploads through Cloudinary
+- Travel preferences for trip matching
 
-### 🚪 Join Request Workflow
-```
+### 🗺️ Trip management
+
+- Create trips with destination, dates, budget range, member limit, rules, and cover image
+- Filter trips by destination, category, budget, and preferences
+- Admin-controlled member approval
+- Admin-only trip deletion and itinerary generation
+
+### 🚪 Join requests
+
+```text
 User requests to join
-     ↓
-Backend creates a pending record
-     ↓
-Admin gets a realtime notification
-     ↓
+        ↓
+Pending request stored
+        ↓
+Admin receives notification
+        ↓
 Admin accepts or rejects
-     ↓
-Requester is notified instantly
-     ↓
-Chat & expenses unlock on acceptance
+        ↓
+Requester is notified
+        ↓
+Accepted member gets access
 ```
-This keeps groups private and gives the trip creator full control over who joins.
 
-### 💬 Realtime Chat
-- Message history loads via REST
-- New messages delivered via Socket.io
-- Online member presence shown live
+### 💬 Realtime chat
+
+- REST API loads message history
+- Socket.io delivers new messages
+- Online member presence
 - Typing indicators
 
-### 💸 Expense Splitter
-- Add expenses with receipt image uploads
-- Extract amount, description, and category from receipt images using Gemini
-- Each member sees only their relevant settlement rows
-- Two-pointer debtor-creditor algorithm produces a minimal, clean settlement plan
-- Settling a payment doesn't rewrite expense history — settlements are stored separately
+### 💸 Expense splitting
 
-**Balance logic:**
+- Add shared expenses with optional receipt images
+- Extract receipt details with Gemini
+- Calculate member balances for equal-split expenses
+- Generate a debtor → creditor settlement plan
+- Store settlements separately from expense history
+
+```text
+Balance = expenses paid - settlements received
+
+Positive → you are owed money
+Negative → you owe money
 ```
-Balance = total expenses paid - settlements received
-Positive balance → you are owed money
-Negative balance → you owe money
-```
 
-### 🔔 Notification Center
-Realtime notifications for:
-- Join request received
-- Request accepted / rejected
-- Expense added
-- Payment settled
+### 🔔 Notifications
 
-Design principle: MongoDB is the source of truth. Socket.io is the delivery layer. If a socket event is missed, the next REST fetch returns correct data.
+Realtime notifications for join requests, request decisions, expenses, and settlements.
 
-### 🖼️ Cloudinary Media Uploads
+MongoDB remains the source of truth; Socket.io is the realtime delivery layer.
+
+### 🖼️ Media uploads
+
 - Profile photos
 - Trip cover images
-- Receipt images for AI expense extraction
+- Receipt images
 
-Upload flow: `FormData → Multer → Cloudinary → secure URL stored in MongoDB`
-
-AI receipt flow:
-```
-Receipt image -> Cloudinary URL -> Gemini image analysis -> expense JSON -> normal expense creation
+```text
+FormData → Multer → Cloudinary → URL stored in MongoDB
 ```
 
 ---
@@ -111,29 +121,34 @@ Receipt image -> Cloudinary URL -> Gemini image analysis -> expense JSON -> norm
 |---|---|
 | Frontend | React, Vite, Tailwind CSS, React Router, Socket.io Client |
 | Backend | Node.js, Express, MongoDB, Mongoose |
-| Auth | JWT, bcryptjs |
+| Authentication | JWT, bcryptjs |
 | Validation | Joi |
 | Realtime | Socket.io |
+| Caching / Jobs | Redis, BullMQ |
 | Media | Multer, Cloudinary |
 | AI | Gemini API |
-| Analytics | Vercel Analytics |
+| Testing | Jest |
+| Deployment | Vercel, Render |
 
 ---
 
 ## Project Structure
 
-```
-TripSync/
+```text
+Trip-Sync/
 ├── backend/
-│   └── src/
-│       ├── config/
-│       ├── controllers/
-│       ├── middleware/
-│       ├── models/
-│       ├── routes/
-│       ├── sockets/
-│       ├── app.js
-│       └── server.js
+│   ├── src/
+│   │   ├── config/
+│   │   ├── controllers/
+│   │   ├── middleware/
+│   │   ├── models/
+│   │   ├── routes/
+│   │   ├── sockets/
+│   │   ├── utils/
+│   │   ├── validators/
+│   │   ├── app.js
+│   │   └── server.js
+│   └── tests/
 │
 └── frontend/
     └── src/
@@ -151,19 +166,22 @@ TripSync/
 ## API Reference
 
 ### Auth
-```
+
+```text
 POST /api/auth/register
 POST /api/auth/login
 ```
 
 ### Users
-```
+
+```text
 GET   /api/users/profile
 PATCH /api/users/profile
 ```
 
 ### Trips
-```
+
+```text
 GET    /api/trips
 POST   /api/trips
 GET    /api/trips/:id
@@ -175,25 +193,29 @@ DELETE /api/trips/:id
 ```
 
 ### Messages
-```
+
+```text
 GET /api/messages/:tripId
 ```
 
 ### Expenses
-```
+
+```text
 GET  /api/expenses/:tripId
 POST /api/expenses/:tripId
 POST /api/expenses/:tripId/settle
 ```
 
-### AI APIs
-```
+### AI
+
+```text
 POST /api/ai/plan-trip
 POST /api/expenses/:tripId/extract-receipt
 ```
 
 ### Notifications
-```
+
+```text
 GET   /api/notifications
 PATCH /api/notifications/read-all
 PATCH /api/notifications/:notificationId/read
@@ -203,17 +225,15 @@ PATCH /api/notifications/:notificationId/read
 
 ## Socket Events
 
-**Client → Server**
-| Event | Description |
+| Client → Server | Description |
 |---|---|
 | `join-trip` | Join a trip room |
 | `send-message` | Send a chat message |
-| `typing` | Emit typing indicator |
+| `typing` | Emit typing status |
 
-**Server → Client**
-| Event | Description |
+| Server → Client | Description |
 |---|---|
-| `joined-trip` | Confirmed room join |
+| `joined-trip` | Confirm room join |
 | `receive-message` | Incoming chat message |
 | `trip-presence` | Online member list |
 | `notification:new` | New notification trigger |
@@ -222,13 +242,112 @@ PATCH /api/notifications/:notificationId/read
 
 ---
 
-## Local Setup
+## Architecture
 
-### 1. Clone the repo
+TripSync separates durable application state from realtime delivery and external services:
+
+```text
+React
+  ↓
+Express REST API ─────→ MongoDB
+  │
+  ├──────────────→ Redis / BullMQ
+  ├──────────────→ Cloudinary
+  ├──────────────→ Gemini
+  └──────────────→ Socket.io
+```
+
+### Redis cache
+
+Trip details use a Redis cache with keys such as `trip:<tripId>`:
+
+```text
+GET /api/trips/:id
+       ↓
+   Redis GET
+   ├─ HIT  → return cached data
+   └─ MISS → MongoDB → Redis SET
+```
+
+When trip data changes, the relevant cache entry is invalidated so the next read uses fresh MongoDB data.
+
+### Production hardening
+
+- `helmet()` for security headers
+- `express-rate-limit` for rate limiting
+- `express-mongo-sanitize` for MongoDB operator injection protection
+- `xss-clean` for unsafe input handling
+
+---
+
+## Validation
+
+Joi validation is applied to critical write endpoints before data reaches the controller, including authentication, trip creation, expense creation, and settlement requests.
+
+AI responses are also validated against dedicated schemas. Invalid AI JSON or invalid AI data is rejected rather than silently stored as application data.
+
+---
+
+## Testing
+
+The backend uses Jest for automated tests covering settlement logic and AI output validation.
+
+Run locally:
 
 ```bash
-git clone https://github.com/your-username/tripsync.git
-cd tripsync
+cd backend
+npm test
+```
+
+GitHub Actions runs the backend test suite on pushes and pull requests targeting `main`.
+
+---
+
+## Load Testing
+
+Artillery was used to run a spike workload against the deployed backend:
+
+```text
+5 req/s → 100 req/s → 5 req/s
+```
+
+The test produced **301 successful HTTP 200 responses from 2,384 total HTTP requests**. At the peak 100+ req/s phase, response times increased substantially and socket timeouts appeared, identifying the current deployment's capacity limit under this workload.
+
+Key observed results:
+
+| Metric | Result |
+|---|---:|
+| Total HTTP requests | 2,384 |
+| Successful HTTP 200 responses | 301 |
+| Socket timeouts | 2,083 |
+| Average response time | 1.99 s |
+| p95 response time | 7.71 s |
+| Peak arrival rate | ~104 req/s |
+
+These results are reported as observed measurements, not as a claim that the application supports 100 req/s at 100% success.
+
+---
+
+## Database Indexes
+
+Indexes cover common lookup patterns such as:
+
+- Trips: `admin + createdAt`, `destination + createdAt`, `status + createdAt`
+- Users: `email`, `username + createdAt`
+- Notifications: `receiver + createdAt`
+- Messages: `tripId + createdAt`
+- Expenses: `tripId + createdAt`, `tripId + paidBy + createdAt`
+- Join requests: `tripId + status`, `tripId + userId`
+
+---
+
+## Local Setup
+
+### 1. Clone
+
+```bash
+git clone https://github.com/shivam22-source/Trip-Sync.git
+cd Trip-Sync
 ```
 
 ### 2. Backend
@@ -248,12 +367,14 @@ CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name
 CLOUDINARY_API_KEY=your_cloudinary_api_key
 CLOUDINARY_API_SECRET=your_cloudinary_api_secret
 GEMINI_API_KEY=your_gemini_api_key
-GEMINI_MODEL=gemini-1.5-flash
+GEMINI_MODEL=your_gemini_model
 GOOGLE_CLIENT_ID=your_google_client_id
 GOOGLE_CLIENT_SECRET=your_google_client_secret
 GOOGLE_CALLBACK_URL=http://localhost:5000/api/auth/google/callback
 FRONTEND_URL=http://localhost:5173
 ```
+
+Run the backend:
 
 ```bash
 npm run dev
@@ -262,7 +383,7 @@ npm run dev
 ### 3. Frontend
 
 ```bash
-cd frontend
+cd ../frontend
 npm install
 ```
 
@@ -273,133 +394,26 @@ VITE_API_URL=http://localhost:5000/api
 VITE_SOCKET_URL=http://localhost:5000
 ```
 
+Run the frontend:
+
 ```bash
 npm run dev
 ```
 
-**Default URLs:**
-- Backend: `http://localhost:5000`
-- Frontend: `http://localhost:5173`
+Default local URLs:
 
----
-
-## Testing the Full Flow
-
-Open two browser sessions (one normal + one incognito) and run through this sequence:
-
+```text
+Frontend: http://localhost:5173
+Backend:  http://localhost:5000
 ```
-[ Account A ] Create a trip
-[ Account B ] Request to join
-[ Account A ] Receives realtime notification → Accepts
-[ Account B ] Receives accepted notification
-[ Both      ] Chat unlocks, both appear online
-[ Account A ] Adds an expense
-[ Account B ] Receives expense notification
-[ Both      ] View settlement plan
-[ Account A ] Marks a payment as settled
-[ Both      ] Balances update
-```
-
----
-
-## Architecture Notes
-
-TripSync is not a basic CRUD app. It combines authenticated access control, an approval-based group model, realtime chat, realtime notifications, media uploads, and expense settlement logic.
-
-The architecture follows one simple principle:
-
-```
-REST        → durable data
-Socket.io   → realtime updates
-MongoDB     → source of truth
-Cloudinary  → media storage
-Gemini      -> AI assistance
-React hooks → reusable frontend logic
-```
-
-This separation keeps the system debuggable and consistent. AI output is converted into normal app data, so itinerary plans, compatibility scores, and extracted expenses stay easy to inspect and explain.
-
-### Trip Cache Flow
-Trip details are cached in Redis using `trip:<tripId>` so repeated reads stay fast.
-
-```txt
-GET /api/trips/:id
-    ↓
-Redis GET
-   ├─ HIT  → return cached trip
-   └─ MISS → load from MongoDB, then Redis SET
-```
-
-When trip data changes, the cache entry is cleared so the next read always rebuilds from MongoDB.
-
-```txt
-MongoDB change
-    ↓
-accept member / AI itinerary save / delete trip
-    ↓
-Redis DEL trip:<tripId>
-```
-
-This keeps reads fast while making sure write updates stay correct.
-
-### Production Hardening
-- `helmet()` adds secure HTTP headers
-- `express-rate-limit` protects login and register from brute-force attempts
-- `express-mongo-sanitize` blocks Mongo operator injection
-- `xss-clean` helps strip unsafe input before saving
-
----
-
-## Validation
-
-Joi schemas validate critical write endpoints before data reaches the controller:
-
-- `POST /api/auth/register`
-- `POST /api/auth/login`
-- `POST /api/trips`
-- `POST /api/expenses/:tripId`
-- `POST /api/expenses/:tripId/settle`
-
-Invalid requests return `400` with a clear error message.
-
----
-
-## Database Indexes
-
-The following indexes are added to keep common reads and lookups fast:
-
-### Trips
-- `admin + createdAt`
-- `destination + createdAt`
-- `city + createdAt`
-- `status + createdAt`
-
-### Users
-- `email`
-- `username + createdAt`
-
-### Notifications
-- `receiver + createdAt`
-
-### Messages
-- `tripId + createdAt`
-
-### Expenses
-- `tripId + createdAt`
-- `tripId + paidBy + createdAt`
-
-### Join Requests
-- `tripId + status`
-- `tripId + userId`
 
 ---
 
 ## Deployment
 
-The frontend is deployed on **Vercel** with Vercel Analytics enabled for tracking:
-- Page views and unique visitors
-- Route-level usage
-- Live traffic
+- Frontend: Vercel
+- Backend: Render
+- Vercel Analytics is enabled on the frontend
 
 ---
 
