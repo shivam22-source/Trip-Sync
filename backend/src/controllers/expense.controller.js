@@ -437,4 +437,9 @@ module.exports = {
   createTripExpense,
   getTripExpenses,
   settleTripPayment,
+  calculateRawBalances,
+  applySettlementsToBalances,
+  calculateBalance,
+  calculateSettlementPlan,
+  canAccessTripExpenses,
 };
