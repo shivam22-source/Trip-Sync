@@ -7,15 +7,16 @@
 A full-stack travel collaboration platform for group trips, realtime chat, shared expenses, and AI-assisted travel planning.
 
 [![Live Demo](https://img.shields.io/badge/Live%20Demo-trip--sync--smoky.vercel.app-black?style=flat-square)](https://trip-sync-smoky.vercel.app/)
-![Stack](https://img.shields.io/badge/Stack-MERN-blue?style=flat-square)
-![Realtime](https://img.shields.io/badge/Realtime-Socket.io-green?style=flat-square)
-![Tests](https://img.shields.io/badge/Tests-Jest-red?style=flat-square)
+[![Stack](https://img.shields.io/badge/Stack-MERN-blue?style=flat-square)](https://github.com/shivam22-source/Trip-Sync)
+[![Realtime](https://img.shields.io/badge/Realtime-Socket.io-green?style=flat-square)](https://socket.io/)
+[![Tests](https://img.shields.io/badge/Tests-Jest-red?style=flat-square)](https://jestjs.io/)
+[![CI](https://img.shields.io/badge/CI-GitHub%20Actions-black?style=flat-square)](https://github.com/shivam22-source/Trip-Sync/actions)
 
 </div>
 
 ---
 
-## Overview
+## 🚀 What is TripSync?
 
 TripSync brings the main parts of a group trip into one application:
 
@@ -25,25 +26,41 @@ TripSync brings the main parts of a group trip into one application:
 - Upload receipts and split shared expenses
 - Track balances and settle payments
 - Generate AI-assisted itineraries and compatibility scores
+- Schedule background trip reminders
 
 **Core flow:**
 
 ```text
 Create trip → Approve members → Chat & plan → Split expenses → Settle up
+                                      ↓
+                               Trip reminders
+                                      ↓
+                               BullMQ worker
 ```
 
 ---
 
-## Features
+## ✨ Why this project is interesting
+
+TripSync is built as a production-style learning project rather than a basic CRUD application.
+
+It combines **authentication, access control, realtime communication, background jobs, caching, media storage, AI integration, validation, testing, and load testing** in one system.
+
+The goal is not to claim massive scale. The goal is to show how real application concerns fit together and how the system behaves when things go wrong.
+
+---
+
+## 🔥 Features
 
 ### 🤖 AI-assisted features
 
 - AI itinerary planner for trip admins
 - AI compatibility score for pending join requests
 - AI receipt extraction for expense creation
-- Joi validation for AI-generated data before it is used by the application
+- Joi validation for AI-generated data before application use
+- Invalid AI JSON/data is rejected instead of silently stored
 
-AI is an assistant, not the source of truth. Generated output is validated before being converted into normal application data.
+AI acts as an assistant, not the source of truth. Generated output is validated before it becomes normal application data.
 
 ### 🔐 Authentication & access control
 
@@ -91,10 +108,14 @@ Accepted member gets access
 - Store settlements separately from expense history
 
 ```text
-Balance = expenses paid - settlements received
+Expenses paid ──────────────┐
+                            ├→ Balance calculation → Settlement plan
+Settlements received ───────┘
+```
 
-Positive → you are owed money
-Negative → you owe money
+```text
+Positive balance → you are owed money
+Negative balance → you owe money
 ```
 
 ### 🔔 Notifications
@@ -105,17 +126,200 @@ MongoDB remains the source of truth; Socket.io is the realtime delivery layer.
 
 ### 🖼️ Media uploads
 
-- Profile photos
-- Trip cover images
-- Receipt images
-
 ```text
 FormData → Multer → Cloudinary → URL stored in MongoDB
 ```
 
+### ⚙️ Background jobs
+
+Trip reminders are handled asynchronously with **BullMQ + Redis** instead of keeping the work inside the request/response cycle.
+
+```text
+Schedule reminder
+       ↓
+BullMQ Queue
+       ↓
+Redis-backed job
+       ↓
+BullMQ Worker
+       ↓
+Fetch trip + members
+       ↓
+Create notification + send email
+```
+
+Reminder jobs support delayed execution, cancellation/rescheduling, retries, and exponential backoff.
+
 ---
 
-## Tech Stack
+## 🧩 System architecture
+
+```text
+                         ┌──────────────────────┐
+                         │     React Frontend   │
+                         └──────────┬───────────┘
+                                    │
+                     REST + Socket.io communication
+                                    │
+                         ┌──────────▼───────────┐
+                         │   Express Backend    │
+                         └───────┬──┬──┬────────┘
+                                 │  │  │
+              ┌──────────────────┘  │  └─────────────────┐
+              ▼                     ▼                    ▼
+        ┌───────────┐         ┌───────────┐        ┌───────────┐
+        │ MongoDB   │         │ Redis     │        │ Cloudinary│
+        │ source of │         │ cache +   │        │ media     │
+        │ truth     │         │ BullMQ    │        │ storage   │
+        └───────────┘         └─────┬─────┘        └───────────┘
+                                    │
+                                    ▼
+                              ┌───────────┐
+                              │ BullMQ    │
+                              │ Worker    │
+                              └─────┬─────┘
+                                    │
+                             notification/email
+                                    │
+                        ┌───────────┴───────────┐
+                        ▼                       ▼
+                   MongoDB                 Mail service
+
+                    Gemini AI ← Express Backend
+```
+
+### Design principles
+
+```text
+MongoDB   → durable application state
+Redis     → cache + job backing store
+BullMQ    → asynchronous job processing
+Socket.io → realtime delivery
+Cloudinary→ media storage
+Gemini    → AI assistance
+```
+
+This separation keeps the system easier to reason about: durable state is not dependent on realtime delivery, and background work does not have to block the main API request.
+
+---
+
+## 🧠 Architecture details
+
+### Redis cache
+
+Trip details use a Redis cache with keys such as `trip:<tripId>`:
+
+```text
+GET /api/trips/:id
+       ↓
+   Redis GET
+   ├─ HIT  → return cached data
+   └─ MISS → MongoDB → Redis SET
+```
+
+When trip data changes, the relevant cache entry is invalidated so the next read uses fresh MongoDB data.
+
+### Background job lifecycle
+
+```text
+Trip reminder requested
+          │
+          ▼
+ scheduleTripReminder()
+          │
+          ▼
+    BullMQ Queue
+          │
+          ▼
+         Redis
+          │
+      delayed job
+          │
+          ▼
+    BullMQ Worker
+          │
+      ┌───┴────┐
+      ▼        ▼
+  MongoDB    Email
+ notification
+```
+
+Jobs are configured with retries and exponential backoff so transient processing failures do not immediately become lost work.
+
+---
+
+## 🛡️ Validation & production hardening
+
+### Request validation
+
+Joi validation is applied to critical write endpoints before data reaches the controller, including authentication, trip creation, expense creation, and settlement requests.
+
+### AI output validation
+
+AI responses are checked against dedicated schemas. Invalid JSON or invalid AI data produces a controlled application error rather than silently entering the database.
+
+### Security middleware
+
+- `helmet()` for security headers
+- `express-rate-limit` for rate limiting
+- `express-mongo-sanitize` for MongoDB operator injection protection
+- `xss-clean` for unsafe input handling
+
+---
+
+## 🧪 Testing & CI
+
+The backend uses Jest for automated tests covering settlement logic and AI output validation.
+
+Run locally:
+
+```bash
+cd backend
+npm test
+```
+
+GitHub Actions runs the backend test suite on pushes and pull requests targeting `main`.
+
+```text
+Code change
+    ↓
+Git push / Pull Request
+    ↓
+GitHub Actions
+    ↓
+npm ci
+    ↓
+npm test
+    ↓
+✅ pass / ❌ fail
+```
+
+---
+
+## 📈 Load testing
+
+Artillery was used to run a spike workload against the deployed backend:
+
+```text
+5 req/s → 100 req/s → 5 req/s
+```
+
+Observed results:
+
+| Metric | Result |
+|---|---:|
+| Total HTTP requests | 2,384 |
+| Successful HTTP 200 responses | 301 |
+| Socket timeouts | 2,083 |
+| Average response time | 1.99 s |
+| p95 response time | 7.71 s |
+| Peak arrival rate | ~104 req/s |
+
+The peak phase caused substantial latency growth and socket timeouts. These are observed measurements from the current deployment, not a claim of 100% success at 100 req/s.
+
+---
+
+## 🛠️ Tech stack
 
 | Layer | Technologies |
 |---|---|
@@ -124,15 +328,15 @@ FormData → Multer → Cloudinary → URL stored in MongoDB
 | Authentication | JWT, bcryptjs |
 | Validation | Joi |
 | Realtime | Socket.io |
-| Caching / Jobs | Redis, BullMQ |
+| Caching / Jobs | Redis, BullMQ, ioredis |
 | Media | Multer, Cloudinary |
 | AI | Gemini API |
-| Testing | Jest |
+| Testing | Jest, GitHub Actions |
 | Deployment | Vercel, Render |
 
 ---
 
-## Project Structure
+## 📁 Project structure
 
 ```text
 Trip-Sync/
@@ -140,12 +344,15 @@ Trip-Sync/
 │   ├── src/
 │   │   ├── config/
 │   │   ├── controllers/
+│   │   ├── jobs/
 │   │   ├── middleware/
 │   │   ├── models/
+│   │   ├── queues/
 │   │   ├── routes/
 │   │   ├── sockets/
 │   │   ├── utils/
 │   │   ├── validators/
+│   │   ├── workers/
 │   │   ├── app.js
 │   │   └── server.js
 │   └── tests/
@@ -163,7 +370,7 @@ Trip-Sync/
 
 ---
 
-## API Reference
+## 🔌 API reference
 
 ### Auth
 
@@ -223,7 +430,7 @@ PATCH /api/notifications/:notificationId/read
 
 ---
 
-## Socket Events
+## 🔌 Socket events
 
 | Client → Server | Description |
 |---|---|
@@ -242,93 +449,7 @@ PATCH /api/notifications/:notificationId/read
 
 ---
 
-## Architecture
-
-TripSync separates durable application state from realtime delivery and external services:
-
-```text
-React
-  ↓
-Express REST API ─────→ MongoDB
-  │
-  ├──────────────→ Redis / BullMQ
-  ├──────────────→ Cloudinary
-  ├──────────────→ Gemini
-  └──────────────→ Socket.io
-```
-
-### Redis cache
-
-Trip details use a Redis cache with keys such as `trip:<tripId>`:
-
-```text
-GET /api/trips/:id
-       ↓
-   Redis GET
-   ├─ HIT  → return cached data
-   └─ MISS → MongoDB → Redis SET
-```
-
-When trip data changes, the relevant cache entry is invalidated so the next read uses fresh MongoDB data.
-
-### Production hardening
-
-- `helmet()` for security headers
-- `express-rate-limit` for rate limiting
-- `express-mongo-sanitize` for MongoDB operator injection protection
-- `xss-clean` for unsafe input handling
-
----
-
-## Validation
-
-Joi validation is applied to critical write endpoints before data reaches the controller, including authentication, trip creation, expense creation, and settlement requests.
-
-AI responses are also validated against dedicated schemas. Invalid AI JSON or invalid AI data is rejected rather than silently stored as application data.
-
----
-
-## Testing
-
-The backend uses Jest for automated tests covering settlement logic and AI output validation.
-
-Run locally:
-
-```bash
-cd backend
-npm test
-```
-
-GitHub Actions runs the backend test suite on pushes and pull requests targeting `main`.
-
----
-
-## Load Testing
-
-Artillery was used to run a spike workload against the deployed backend:
-
-```text
-5 req/s → 100 req/s → 5 req/s
-```
-
-The test produced **301 successful HTTP 200 responses from 2,384 total HTTP requests**. At the peak 100+ req/s phase, response times increased substantially and socket timeouts appeared, identifying the current deployment's capacity limit under this workload.
-
-Key observed results:
-
-| Metric | Result |
-|---|---:|
-| Total HTTP requests | 2,384 |
-| Successful HTTP 200 responses | 301 |
-| Socket timeouts | 2,083 |
-| Average response time | 1.99 s |
-| p95 response time | 7.71 s |
-| Peak arrival rate | ~104 req/s |
-
-These results are reported as observed measurements, not as a claim that the application supports 100 req/s at 100% success.
-
----
-
-## Database Indexes
+## 🗄️ Database indexes
 
 Indexes cover common lookup patterns such as:
 
@@ -341,7 +462,7 @@ Indexes cover common lookup patterns such as:
 
 ---
 
-## Local Setup
+## 🚀 Local setup
 
 ### 1. Clone
 
@@ -409,11 +530,11 @@ Backend:  http://localhost:5000
 
 ---
 
-## Deployment
+## 🌐 Deployment
 
 - Frontend: Vercel
 - Backend: Render
-- Vercel Analytics is enabled on the frontend
+- Vercel Analytics enabled on the frontend
 
 ---
 
