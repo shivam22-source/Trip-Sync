@@ -1,3 +1,7 @@
+function roundMoney(amount) {
+  return Math.round((amount + Number.EPSILON) * 100) / 100;
+}
+
 function calculateRawBalances(expenses, members) {
   const balances = new Map(
     members.map((member) => [
@@ -52,9 +56,9 @@ function calculateBalance(expenses, members, settlements, userId) {
   const balances = calculateRawBalances(expenses, members);
   applySettlementsToBalances(balances, settlements);
 
-  const userBalance = Math.round(
-    balances.get(userId)?.balance || 0
-  );
+const userBalance = roundMoney(
+  balances.get(userId)?.balance || 0
+);
 
   return {
     owe: userBalance < 0 ? Math.abs(userBalance) : 0,
@@ -70,7 +74,7 @@ function calculateSettlementPlan(expenses, members, paidSettlements) {
   const creditors = [];
 
   balances.forEach((memberBalance) => {
-    const roundedBalance = Math.round(memberBalance.balance);
+    const roundedBalance = roundMoney(memberBalance.balance);
 
     if (roundedBalance < 0) {
       debtors.push({
@@ -97,7 +101,9 @@ function calculateSettlementPlan(expenses, members, paidSettlements) {
   ) {
     const debtor = debtors[debtorIndex];
     const creditor = creditors[creditorIndex];
-    const amount = Math.min(debtor.balance, creditor.balance);
+    const amount = roundMoney(
+  Math.min(debtor.balance, creditor.balance)
+);
 
     if (amount > 0) {
       settlements.push({
@@ -117,11 +123,11 @@ function calculateSettlementPlan(expenses, members, paidSettlements) {
     debtor.balance -= amount;
     creditor.balance -= amount;
 
-    if (debtor.balance === 0) {
+    if (roundMoney(debtor.balance) === 0) {
       debtorIndex += 1;
     }
 
-    if (creditor.balance === 0) {
+    if (roundMoney(creditor.balance) === 0) {
       creditorIndex += 1;
     }
   }
