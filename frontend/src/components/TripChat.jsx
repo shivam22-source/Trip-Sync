@@ -9,6 +9,7 @@ function TripChat({ tripId, canChat }) {
   const [messages, setMessages] = useState([]);
   const [messageText, setMessageText] = useState("");
   const [onlineMembers, setOnlineMembers] = useState([]);
+  const [shareStatus, setShareStatus] = useState("");
   const [status, setStatus] = useState({
     loading: true,
     sending: false,
@@ -90,6 +91,30 @@ function TripChat({ tripId, canChat }) {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  async function handleShareTrip() {
+    const shareUrl = `${window.location.origin}/trips/${tripId}`;
+    const shareData = {
+      title: "Join my TripSync trip",
+      text: "Join our trip on TripSync.",
+      url: shareUrl,
+    };
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else if (navigator.clipboard) {
+        await navigator.clipboard.writeText(shareUrl);
+        setShareStatus("Trip link copied.");
+      } else {
+        window.prompt("Copy this trip link", shareUrl);
+      }
+    } catch (error) {
+      if (error?.name !== "AbortError") {
+        setShareStatus("Could not share the trip link.");
+      }
+    }
+  }
+
   async function handleSend(event) {
     event.preventDefault();
 
@@ -141,12 +166,25 @@ function TripChat({ tripId, canChat }) {
             </p>
           )}
         </div>
-        <span
-          className={`h-3 w-3 rounded-full ${
-            status.connected ? "bg-emerald-500" : "bg-amber-400"
-          }`}
-        />
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={handleShareTrip}
+            className="rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-black text-slate-700 transition hover:border-slate-400 hover:text-slate-950"
+          >
+            Share trip
+          </button>
+          <span
+            className={`h-3 w-3 rounded-full ${
+              status.connected ? "bg-emerald-500" : "bg-amber-400"
+            }`}
+          />
+        </div>
       </div>
+
+      {shareStatus && (
+        <p className="mt-3 text-xs font-bold text-emerald-700">{shareStatus}</p>
+      )}
 
       {status.error && (
         <p className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm font-bold text-red-700">
