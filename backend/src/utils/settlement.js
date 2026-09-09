@@ -10,7 +10,6 @@ function getExpenseSplits(expense, members) {
     }));
   }
 
-  // Backward compatibility for expenses created before participant-level splits.
   if (members.length === 0) {
     return [];
   }
@@ -19,7 +18,7 @@ function getExpenseSplits(expense, members) {
 }
 
 function generateEqualSplits(amount, userIds) {
-  const uniqueIds = [...new Set(userIds.map((id) => id.toString()))];
+  const uniqueIds = [...new Set(userIds.map((id) => id.toString()))].sort();
 
   if (!uniqueIds.length) {
     throw new Error("At least one participant is required");
@@ -82,20 +81,14 @@ function applySettlementsToBalances(balances, settlements) {
     const fromBalance = balances.get(settlement.from.toString());
     const toBalance = balances.get(settlement.to.toString());
 
-    if (fromBalance) {
-      fromBalance.balance += settlement.amount;
-    }
-
-    if (toBalance) {
-      toBalance.balance -= settlement.amount;
-    }
+    if (fromBalance) fromBalance.balance += settlement.amount;
+    if (toBalance) toBalance.balance -= settlement.amount;
   });
 }
 
 function calculateBalance(expenses, members, settlements, userId) {
   const balances = calculateRawBalances(expenses, members);
   applySettlementsToBalances(balances, settlements);
-
   const userBalance = roundMoney(balances.get(userId)?.balance || 0);
 
   return {
@@ -113,19 +106,11 @@ function calculateSettlementPlan(expenses, members, paidSettlements) {
 
   balances.forEach((memberBalance) => {
     const roundedBalance = roundMoney(memberBalance.balance);
-
     if (roundedBalance < 0) {
-      debtors.push({
-        ...memberBalance,
-        balance: Math.abs(roundedBalance),
-      });
+      debtors.push({ ...memberBalance, balance: Math.abs(roundedBalance) });
     }
-
     if (roundedBalance > 0) {
-      creditors.push({
-        ...memberBalance,
-        balance: roundedBalance,
-      });
+      creditors.push({ ...memberBalance, balance: roundedBalance });
     }
   });
 
@@ -133,10 +118,7 @@ function calculateSettlementPlan(expenses, members, paidSettlements) {
   let debtorIndex = 0;
   let creditorIndex = 0;
 
-  while (
-    debtorIndex < debtors.length &&
-    creditorIndex < creditors.length
-  ) {
+  while (debtorIndex < debtors.length && creditorIndex < creditors.length) {
     const debtor = debtors[debtorIndex];
     const creditor = creditors[creditorIndex];
     const amount = roundMoney(Math.min(debtor.balance, creditor.balance));
@@ -144,14 +126,8 @@ function calculateSettlementPlan(expenses, members, paidSettlements) {
     if (amount > 0) {
       settlements.push({
         id: `${debtor.userId}-${creditor.userId}`,
-        from: {
-          userId: debtor.userId,
-          name: debtor.name,
-        },
-        to: {
-          userId: creditor.userId,
-          name: creditor.name,
-        },
+        from: { userId: debtor.userId, name: debtor.name },
+        to: { userId: creditor.userId, name: creditor.name },
         amount,
       });
     }
@@ -159,13 +135,8 @@ function calculateSettlementPlan(expenses, members, paidSettlements) {
     debtor.balance = roundMoney(debtor.balance - amount);
     creditor.balance = roundMoney(creditor.balance - amount);
 
-    if (debtor.balance === 0) {
-      debtorIndex += 1;
-    }
-
-    if (creditor.balance === 0) {
-      creditorIndex += 1;
-    }
+    if (debtor.balance === 0) debtorIndex += 1;
+    if (creditor.balance === 0) creditorIndex += 1;
   }
 
   return settlements;
