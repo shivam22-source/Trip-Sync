@@ -1,5 +1,21 @@
 const mongoose = require("mongoose");
 
+const splitSchema = new mongoose.Schema(
+  {
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    amount: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
+  },
+  { _id: false }
+);
+
 const expenseSchema = new mongoose.Schema(
   {
     tripId: {
@@ -32,9 +48,15 @@ const expenseSchema = new mongoose.Schema(
       default: "Misc",
     },
 
-    splitEqually: {
-      type: Boolean,
-      default: true,
+    splitType: {
+      type: String,
+      enum: ["equal"],
+      default: "equal",
+    },
+
+    splits: {
+      type: [splitSchema],
+      default: [],
     },
 
     receiptName: {

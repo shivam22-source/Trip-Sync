@@ -2,6 +2,39 @@ function roundMoney(amount) {
   return Math.round((amount + Number.EPSILON) * 100) / 100;
 }
 
+function getExpenseSplits(expense, members) {
+  if (Array.isArray(expense.splits) && expense.splits.length) {
+    return expense.splits.map((split) => ({
+      userId: split.userId,
+      amount: roundMoney(Number(split.amount)),
+    }));
+  }
+
+  // Backward compatibility for expenses created before participant-level splits.
+  if (members.length === 0) {
+    return [];
+  }
+
+  return generateEqualSplits(expense.amount, members.map((member) => member._id));
+}
+
+function generateEqualSplits(amount, userIds) {
+  const uniqueIds = [...new Set(userIds.map((id) => id.toString()))];
+
+  if (!uniqueIds.length) {
+    throw new Error("At least one participant is required");
+  }
+
+  const totalPaise = Math.round(Number(amount) * 100);
+  const basePaise = Math.floor(totalPaise / uniqueIds.length);
+  const remainder = totalPaise % uniqueIds.length;
+
+  return uniqueIds.map((userId, index) => ({
+    userId,
+    amount: (basePaise + (index < remainder ? 1 : 0)) / 100,
+  }));
+}
+
 function calculateRawBalances(expenses, members) {
   const balances = new Map(
     members.map((member) => [
@@ -15,23 +48,30 @@ function calculateRawBalances(expenses, members) {
   );
 
   expenses.forEach((expense) => {
-    if (!expense.splitEqually || members.length === 0) {
+    const paidById = expense.paidBy?._id?.toString() || expense.paidBy?.toString();
+    const payerBalance = balances.get(paidById);
+
+    if (!payerBalance) {
       return;
     }
 
-    const paidById = expense.paidBy._id.toString();
-    const share = expense.amount / members.length;
+    const splits = getExpenseSplits(expense, members);
+    const splitTotal = roundMoney(
+      splits.reduce((total, split) => total + Number(split.amount), 0)
+    );
 
-    members.forEach((member) => {
-      const memberBalance = balances.get(member._id.toString());
-      memberBalance.balance -= share;
-    });
-
-    const payerBalance = balances.get(paidById);
-
-    if (payerBalance) {
-      payerBalance.balance += expense.amount;
+    if (splitTotal !== roundMoney(Number(expense.amount))) {
+      return;
     }
+
+    payerBalance.balance += Number(expense.amount);
+
+    splits.forEach((split) => {
+      const memberBalance = balances.get(split.userId.toString());
+      if (memberBalance) {
+        memberBalance.balance -= Number(split.amount);
+      }
+    });
   });
 
   return balances;
@@ -56,9 +96,7 @@ function calculateBalance(expenses, members, settlements, userId) {
   const balances = calculateRawBalances(expenses, members);
   applySettlementsToBalances(balances, settlements);
 
-const userBalance = roundMoney(
-  balances.get(userId)?.balance || 0
-);
+  const userBalance = roundMoney(balances.get(userId)?.balance || 0);
 
   return {
     owe: userBalance < 0 ? Math.abs(userBalance) : 0,
@@ -101,9 +139,7 @@ function calculateSettlementPlan(expenses, members, paidSettlements) {
   ) {
     const debtor = debtors[debtorIndex];
     const creditor = creditors[creditorIndex];
-    const amount = roundMoney(
-  Math.min(debtor.balance, creditor.balance)
-);
+    const amount = roundMoney(Math.min(debtor.balance, creditor.balance));
 
     if (amount > 0) {
       settlements.push({
@@ -120,14 +156,14 @@ function calculateSettlementPlan(expenses, members, paidSettlements) {
       });
     }
 
-    debtor.balance -= amount;
-    creditor.balance -= amount;
+    debtor.balance = roundMoney(debtor.balance - amount);
+    creditor.balance = roundMoney(creditor.balance - amount);
 
-    if (roundMoney(debtor.balance) === 0) {
+    if (debtor.balance === 0) {
       debtorIndex += 1;
     }
 
-    if (roundMoney(creditor.balance) === 0) {
+    if (creditor.balance === 0) {
       creditorIndex += 1;
     }
   }
@@ -136,6 +172,9 @@ function calculateSettlementPlan(expenses, members, paidSettlements) {
 }
 
 module.exports = {
+  roundMoney,
+  generateEqualSplits,
+  getExpenseSplits,
   calculateRawBalances,
   applySettlementsToBalances,
   calculateBalance,

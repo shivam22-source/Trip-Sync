@@ -1,24 +1,78 @@
-
 const {
+  generateEqualSplits,
   calculateRawBalances,
   calculateBalance,
-  calculateSettlementPlan
-  
+  calculateSettlementPlan,
 } = require("../src/utils/settlement");
 
-describe("calculateRawBalances", () => {
-  test("calculates balances for an equally split expense", () => {
-    const members = [
-      { _id: "a", name: "A" },
-      { _id: "b", name: "B" },
-      { _id: "c", name: "C" },
-    ];
+const members = [
+  { _id: "a", name: "A" },
+  { _id: "b", name: "B" },
+  { _id: "c", name: "C" },
+  { _id: "d", name: "D" },
+  { _id: "e", name: "E" },
+];
 
+describe("generateEqualSplits", () => {
+  test("splits equally among selected participants", () => {
+    expect(generateEqualSplits(900, ["a", "b", "c"])).toEqual([
+      { userId: "a", amount: 3 },
+      { userId: "b", amount: 3 },
+      { userId: "c", amount: 3 },
+    ].map((split) => ({ ...split, amount: split.amount * 100 })));
+  });
+
+  test("allocates remainder deterministically and preserves the total", () => {
+    const splits = generateEqualSplits(1000, ["a", "b", "c"]);
+
+    expect(splits).toEqual([
+      { userId: "a", amount: 333.34 },
+      { userId: "b", amount: 333.33 },
+      { userId: "c", amount: 333.33 },
+    ]);
+    expect(splits.reduce((sum, split) => sum + split.amount, 0)).toBe(1000);
+  });
+
+  test("removes duplicate participants", () => {
+    expect(generateEqualSplits(600, ["a", "a", "b"])).toEqual([
+      { userId: "a", amount: 300 },
+      { userId: "b", amount: 300 },
+    ]);
+  });
+});
+
+describe("calculateRawBalances", () => {
+  test("splits an expense only among selected participants", () => {
     const expenses = [
       {
-        amount: 900,
-        splitEqually: true,
+        amount: 1000,
         paidBy: { _id: "a" },
+        splits: [
+          { userId: "a", amount: 333.34 },
+          { userId: "b", amount: 333.33 },
+          { userId: "c", amount: 333.33 },
+        ],
+      },
+    ];
+
+    const balances = calculateRawBalances(expenses, members);
+
+    expect(balances.get("a").balance).toBe(666.66);
+    expect(balances.get("b").balance).toBe(-333.33);
+    expect(balances.get("c").balance).toBe(-333.33);
+    expect(balances.get("d").balance).toBe(0);
+    expect(balances.get("e").balance).toBe(0);
+  });
+
+  test("supports expenses where the payer is not a participant", () => {
+    const expenses = [
+      {
+        amount: 600,
+        paidBy: { _id: "a" },
+        splits: [
+          { userId: "b", amount: 300 },
+          { userId: "c", amount: 300 },
+        ],
       },
     ];
 
@@ -29,433 +83,151 @@ describe("calculateRawBalances", () => {
     expect(balances.get("c").balance).toBe(-300);
   });
 
-  test("returns zero balances when there are no expenses", () => {
-  const members = [
-    { _id: "a", name: "A" },
-    { _id: "b", name: "B" },
-    { _id: "c", name: "C" },
-  ];
+  test("keeps legacy expenses working during the data transition", () => {
+    const expenses = [{ amount: 900, splitEqually: true, paidBy: { _id: "a" } }];
+    const balances = calculateRawBalances(expenses, members.slice(0, 3));
 
-  const balances = calculateRawBalances([], members);
-
-  expect(balances.get("a").balance).toBe(0);
-  expect(balances.get("b").balance).toBe(0);
-  expect(balances.get("c").balance).toBe(0);
-});
-test("ignores expenses that are not split equally", () => {
-  const members = [
-    { _id: "a", name: "A" },
-    { _id: "b", name: "B" },
-    { _id: "c", name: "C" },
-  ];
-
-  const expenses = [
-    {
-      amount: 900,
-      splitEqually: false,
-      paidBy: { _id: "a" },
-    },
-  ];
-
-  const balances = calculateRawBalances(expenses, members);
-
-  expect(balances.get("a").balance).toBe(0);
-  expect(balances.get("b").balance).toBe(0);
-  expect(balances.get("c").balance).toBe(0);
+    expect(balances.get("a").balance).toBe(600);
+    expect(balances.get("b").balance).toBe(-300);
+    expect(balances.get("c").balance).toBe(-300);
+  });
 });
 
-test("calculates balances correctly for multiple expenses", () => {
-  const members = [
-    { _id: "a", name: "A" },
-    { _id: "b", name: "B" },
-    { _id: "c", name: "C" },
-  ];
-
-  const expenses = [
-    {
-      amount: 900,
-      splitEqually: true,
-      paidBy: { _id: "a" },
-    },
-    {
-      amount: 600,
-      splitEqually: true,
-      paidBy: { _id: "b" },
-    },
-  ];
-
-  const balances = calculateRawBalances(expenses, members);
-
-  expect(balances.get("a").balance).toBe(400);
-  expect(balances.get("b").balance).toBe(100);
-  expect(balances.get("c").balance).toBe(-500);
-});
-test("calculates how much a user owes", () => {
-  const members = [
-    { _id: "a", name: "A" },
-    { _id: "b", name: "B" },
-    { _id: "c", name: "C" },
-  ];
-
-  const expenses = [
-    {
-      amount: 900,
-      splitEqually: true,
-      paidBy: { _id: "a" },
-    },
-  ];
-
-  const balance = calculateBalance(expenses, members, [], "b");
-
-  expect(balance.owe).toBe(300);
-  expect(balance.owed).toBe(0);
-});
-
-test("calculates how much a user is owed", () => {
-  const members = [
-    { _id: "a", name: "A" },
-    { _id: "b", name: "B" },
-    { _id: "c", name: "C" },
-  ];
-
-  const expenses = [
-    {
-      amount: 900,
-      splitEqually: true,
-      paidBy: { _id: "a" },
-    },
-  ];
-
-  const balance = calculateBalance(expenses, members, [], "a");
-
-  expect(balance.owe).toBe(0);
-  expect(balance.owed).toBe(600);
-});
-
-test("reduces the amount owed after a settlement", () => {
-  const members = [
-    { _id: "a", name: "A" },
-    { _id: "b", name: "B" },
-    { _id: "c", name: "C" },
-  ];
-
-  const expenses = [
-    {
-      amount: 900,
-      splitEqually: true,
-      paidBy: { _id: "a" },
-    },
-  ];
-
-  const settlements = [
-    {
-      from: "b",
-      to: "a",
-      amount: 100,
-    },
-  ];
-
-  const balance = calculateBalance(
-    expenses,
-    members,
-    settlements,
-    "b"
-  );
-
-  expect(balance.owe).toBe(200);
-  expect(balance.owed).toBe(0);
-});
-
-test("creates a settlement between one debtor and one creditor", () => {
-  const members = [
-    { _id: "a", name: "A" },
-    { _id: "b", name: "B" },
-  ];
-
-  const expenses = [
-    {
-      amount: 600,
-      splitEqually: true,
-      paidBy: { _id: "a" },
-    },
-  ];
-
-  const settlements = calculateSettlementPlan(
-    expenses,
-    members,
-    []
-  );
-
-  expect(settlements).toHaveLength(1);
-
-  expect(settlements[0].from.userId).toBe("b");
-  expect(settlements[0].to.userId).toBe("a");
-  expect(settlements[0].amount).toBe(300);
-});
-test("creates settlements for multiple debtors and one creditor", () => {
-  const members = [
-    { _id: "a", name: "A" },
-    { _id: "b", name: "B" },
-    { _id: "c", name: "C" },
-  ];
-
-  const expenses = [
-    {
-      amount: 900,
-      splitEqually: true,
-      paidBy: { _id: "a" },
-    },
-  ];
-
-  const settlements = calculateSettlementPlan(
-    expenses,
-    members,
-    []
-  );
-
-  expect(settlements).toHaveLength(2);
-
-  expect(settlements).toEqual([
-    {
-      id: "b-a",
-      from: {
-        userId: "b",
-        name: "B",
-      },
-      to: {
-        userId: "a",
-        name: "A",
-      },
-      amount: 300,
-    },
-    {
-      id: "c-a",
-      from: {
-        userId: "c",
-        name: "C",
-      },
-      to: {
-        userId: "a",
-        name: "A",
-      },
-      amount: 300,
-    },
-  ]);
-});
-test("creates settlements for one creditor and multiple debtors", () => {
-  const members = [
-    { _id: "a", name: "A" },
-    { _id: "b", name: "B" },
-    { _id: "c", name: "C" },
-  ];
-
-  const expenses = [
-    {
-      amount: 300,
-      splitEqually: true,
-      paidBy: { _id: "a" },
-    },
-    {
-      amount: 900,
-      splitEqually: true,
-      paidBy: { _id: "b" },
-    },
-  ];
-
-  const settlements = calculateSettlementPlan(
-    expenses,
-    members,
-    []
-  );
-
-  expect(settlements).toEqual([
-    {
-      id: "a-b",
-      from: {
-        userId: "a",
-        name: "A",
-      },
-      to: {
-        userId: "b",
-        name: "B",
-      },
-      amount: 100,
-    },
-    {
-      id: "c-b",
-      from: {
-        userId: "c",
-        name: "C",
-      },
-      to: {
-        userId: "b",
-        name: "B",
-      },
-      amount: 400,
-    },
-  ]);
-});
-
-test("creates the correct plan for multiple debtors and creditors", () => {
-  const members = [
-    { _id: "a", name: "A" },
-    { _id: "b", name: "B" },
-    { _id: "c", name: "C" },
-    { _id: "d", name: "D" },
-    { _id: "e", name: "E" },
-  ];
-
-  const expenses = [
-    {
+describe("calculateBalance", () => {
+  test("calculates a participant's amount owed", () => {
+    const expenses = [{
       amount: 1000,
-      splitEqually: true,
       paidBy: { _id: "a" },
-    },
-    {
-      amount: 500,
-      splitEqually: true,
-      paidBy: { _id: "b" },
-    },
-  ];
+      splits: [
+        { userId: "a", amount: 333.34 },
+        { userId: "b", amount: 333.33 },
+        { userId: "c", amount: 333.33 },
+      ],
+    }];
 
-  const settlements = calculateSettlementPlan(
-    expenses,
-    members,
-    []
-  );
+    expect(calculateBalance(expenses, members, [], "b")).toEqual({
+      owe: 333.33,
+      owed: 0,
+    });
+    expect(calculateBalance(expenses, members, [], "d")).toEqual({
+      owe: 0,
+      owed: 0,
+    });
+  });
 
-  expect(settlements).toEqual([
-    {
-      id: "c-a",
-      from: {
-        userId: "c",
-        name: "C",
-      },
-      to: {
-        userId: "a",
-        name: "A",
-      },
-      amount: 300,
-    },
-    {
-      id: "d-a",
-      from: {
-        userId: "d",
-        name: "D",
-      },
-      to: {
-        userId: "a",
-        name: "A",
-      },
-      amount: 300,
-    },
-    {
-      id: "e-a",
-      from: {
-        userId: "e",
-        name: "E",
-      },
-      to: {
-        userId: "a",
-        name: "A",
-      },
-      amount: 100,
-    },
-    {
-      id: "e-b",
-      from: {
-        userId: "e",
-        name: "E",
-      },
-      to: {
-        userId: "b",
-        name: "B",
-      },
-      amount: 200,
-    },
-  ]);
-});
-test("returns no settlements when everything is already settled", () => {
-  const members = [
-    { _id: "a", name: "A" },
-    { _id: "b", name: "B" },
-  ];
-
-  const expenses = [
-    {
+  test("applies actual settlements to the derived balance", () => {
+    const expenses = [{
       amount: 600,
-      splitEqually: true,
       paidBy: { _id: "a" },
-    },
-  ];
+      splits: [
+        { userId: "a", amount: 300 },
+        { userId: "b", amount: 300 },
+      ],
+    }];
 
-  const paidSettlements = [
-    {
-      from: "b",
-      to: "a",
-      amount: 300,
-    },
-  ];
-
-  const settlements = calculateSettlementPlan(
-    expenses,
-    members,
-    paidSettlements
-  );
-
-  expect(settlements).toEqual([]);
-});
-test("rounds decimal balances to the nearest whole amount", () => {
-  const members = [
-    { _id: "a", name: "A" },
-    { _id: "b", name: "B" },
-    { _id: "c", name: "C" },
-  ];
-
-  const expenses = [
-    {
-      amount: 100,
-      splitEqually: true,
-      paidBy: { _id: "a" },
-    },
-  ];
-
-  const balance = calculateBalance(expenses, members, [], "b");
-
-  expect(balance.owe).toBe(33.33);
-  expect(balance.owed).toBe(0);
+    expect(calculateBalance(expenses, members, [
+      { from: "b", to: "a", amount: 100 },
+    ], "b")).toEqual({ owe: 200, owed: 0 });
+  });
 });
 
-test("returns zero balance after the exact amount is settled", () => {
-  const members = [
-    { _id: "a", name: "A" },
-    { _id: "b", name: "B" },
-  ];
+describe("calculateSettlementPlan", () => {
+  test("nets multiple expenses before creating transfers", () => {
+    const expenses = [
+      {
+        amount: 1000,
+        paidBy: { _id: "a" },
+        splits: [
+          { userId: "a", amount: 333.34 },
+          { userId: "b", amount: 333.33 },
+          { userId: "c", amount: 333.33 },
+        ],
+      },
+      {
+        amount: 300,
+        paidBy: { _id: "c" },
+        splits: [
+          { userId: "a", amount: 150 },
+          { userId: "c", amount: 150 },
+        ],
+      },
+    ];
 
-  const expenses = [
-    {
+    expect(calculateSettlementPlan(expenses, members, [])).toEqual([
+      {
+        id: "b-a",
+        from: { userId: "b", name: "B" },
+        to: { userId: "a", name: "A" },
+        amount: 333.33,
+      },
+      {
+        id: "c-a",
+        from: { userId: "c", name: "C" },
+        to: { userId: "a", name: "A" },
+        amount: 183.33,
+      },
+    ]);
+  });
+
+  test("simplifies multiple debtors and creditors", () => {
+    const expenses = [
+      {
+        amount: 1000,
+        paidBy: { _id: "a" },
+        splits: [
+          { userId: "a", amount: 200 },
+          { userId: "b", amount: 200 },
+          { userId: "c", amount: 200 },
+          { userId: "d", amount: 200 },
+          { userId: "e", amount: 200 },
+        ],
+      },
+      {
+        amount: 500,
+        paidBy: { _id: "b" },
+        splits: [
+          { userId: "b", amount: 250 },
+          { userId: "e", amount: 250 },
+        ],
+      },
+    ];
+
+    const plan = calculateSettlementPlan(expenses, members, []);
+
+    expect(plan).toEqual([
+      {
+        id: "c-a",
+        from: { userId: "c", name: "C" },
+        to: { userId: "a", name: "A" },
+        amount: 200,
+      },
+      {
+        id: "d-a",
+        from: { userId: "d", name: "D" },
+        to: { userId: "a", name: "A" },
+        amount: 200,
+      },
+      {
+        id: "e-a",
+        from: { userId: "e", name: "E" },
+        to: { userId: "a", name: "A" },
+        amount: 150,
+      },
+    ]);
+  });
+
+  test("returns no transfers after everything is settled", () => {
+    const expenses = [{
       amount: 600,
-      splitEqually: true,
       paidBy: { _id: "a" },
-    },
-  ];
+      splits: [
+        { userId: "a", amount: 300 },
+        { userId: "b", amount: 300 },
+      ],
+    }];
 
-  const settlements = [
-    {
-      from: "b",
-      to: "a",
-      amount: 300,
-    },
-  ];
-
-  const balance = calculateBalance(
-    expenses,
-    members,
-    settlements,
-    "b"
-  );
-
-  expect(balance.owe).toBe(0);
-  expect(balance.owed).toBe(0);
-});
+    expect(calculateSettlementPlan(expenses, members, [
+      { from: "b", to: "a", amount: 300 },
+    ])).toEqual([]);
+  });
 });
