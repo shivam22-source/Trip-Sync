@@ -23,48 +23,40 @@ const expenseSchema = new mongoose.Schema(
       ref: "Trip",
       required: true,
     },
-
     paidBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
     },
-
     amount: {
       type: Number,
       required: true,
       min: 1,
     },
-
     description: {
       type: String,
       required: true,
       trim: true,
     },
-
     category: {
       type: String,
       enum: ["Flights", "Food", "Hotel", "Misc"],
       default: "Misc",
     },
-
     splitType: {
       type: String,
-      enum: ["equal"],
+      enum: ["equal", "exact", "percentage"],
       default: "equal",
     },
-
     splits: {
       type: [splitSchema],
       default: [],
     },
-
     receiptName: {
       type: String,
       default: "",
       trim: true,
     },
-
     receiptImage: {
       type: String,
       default: "",
