@@ -1,17 +1,13 @@
 config:
-  target: "https://trip-sync-botj.onrender.com"
-
+  target: "{{ $env.TRIPSYNC_TEST_TARGET }}"
   phases:
     - duration: 60
       arrivalRate: 5
 
 scenarios:
-  - name: Expenses
-
+  - name: Trip expense read path
     flow:
-
       - get:
-          url: "/api/expenses/6a4b51b4b945d3ef2e354b1b"
-
+          url: "/api/expenses/{{ $env.TRIPSYNC_TEST_TRIP_ID }}"
           headers:
-            Authorization: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhNGMwMTBkYjcwYzUzOGU0MDlmYjgzOSIsImlhdCI6MTc4MzM2NjY1MiwiZXhwIjoxNzgzOTcxNDUyfQ.StpgVKojgvyw7y2VKo_HeStBNJxUFSF_syLQaGMyWGg"
+            Authorization: "Bearer {{ $env.TRIPSYNC_TEST_TOKEN }}"

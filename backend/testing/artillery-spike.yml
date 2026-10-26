@@ -1,24 +1,18 @@
 config:
-  target: "https://trip-sync-botj.onrender.com"
-
+  target: "{{ $env.TRIPSYNC_TEST_TARGET }}"
   phases:
     - duration: 20
       arrivalRate: 5
-
     - duration: 20
       arrivalRate: 100
-
     - duration: 20
       arrivalRate: 5
 
 scenarios:
-  - name: Spike Test
-
+  - name: Spike test on public read paths
     flow:
       - get:
           url: "/api/trips"
-
       - think: 1
-
       - get:
           url: "/"

@@ -576,3 +576,46 @@ Redis:    localhost:6379
 Built with care by Shivam · [Live Demo](https://trip-sync-smoky.vercel.app/)
 
 </div>
+
+
+---
+
+## 🧪 Testing
+
+Run the existing Jest tests from `backend/`:
+
+```bash
+npm test
+npm run test:coverage
+```
+
+Coverage reports are generated under `backend/coverage/`. Coverage is a measurement, not proof that the code is bug-free.
+
+### Artillery load tests
+
+Artillery scripts live in `backend/testing/`. They use environment variables instead of committed tokens or account credentials.
+
+1. Copy `backend/testing/.env.example` to `backend/testing/.env`.
+2. Set `TRIPSYNC_TEST_TARGET` to a local or staging API you control. Do not point spike tests at production.
+3. Set test-only credentials and a test trip ID. Use a dedicated test account and disposable/staging data.
+4. From `backend/`, run one scenario at a time:
+
+```bash
+npm run test:load:api
+npm run test:load:auth
+npm run test:load:login
+npm run test:load:expenses
+npm run test:load:messages
+npm run test:load:join-requests
+npm run test:load:spike
+```
+
+To save a JSON report for the public API test:
+
+```bash
+npm run test:load:api:report
+```
+
+Reports are written to `backend/test-results/` and are ignored by Git. The first run is a baseline, not a performance claim. Record the target environment, load phases, successful/error request counts, throughput, and p50/p95/p99 response times before comparing runs.
+
+The current scenarios focus on read paths where possible. Login tests still perform authentication, and any test that mutates state should use isolated test data. Start with low load, inspect the result, and increase traffic gradually.

@@ -1,24 +1,18 @@
 config:
-  target: "https://trip-sync-botj.onrender.com"
-
+  target: "{{ $env.TRIPSYNC_TEST_TARGET }}"
   phases:
     - duration: 60
       arrivalRate: 5
-
     - duration: 60
       arrivalRate: 10
-
     - duration: 60
       arrivalRate: 20
 
 scenarios:
-  - name: Public API Test
-
+  - name: Public API read paths
     flow:
       - get:
           url: "/api/trips"
-
       - think: 1
-
       - get:
           url: "/"
