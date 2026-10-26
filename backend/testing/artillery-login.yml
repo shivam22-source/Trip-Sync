@@ -1,22 +1,16 @@
 config:
-  target: "https://trip-sync-botj.onrender.com"
-
+  target: "{{ $env.TRIPSYNC_TEST_TARGET }}"
   phases:
     - duration: 60
       arrivalRate: 5
-
     - duration: 60
       arrivalRate: 10
 
 scenarios:
-  - name: Login Test
-
+  - name: Login
     flow:
-
       - post:
-
           url: "/api/auth/login"
-
           json:
-            email: "shradha122@gmail.com"
-            password: "123456"
+            email: "{{ $env.TRIPSYNC_TEST_USER_EMAIL }}"
+            password: "{{ $env.TRIPSYNC_TEST_USER_PASSWORD }}"
