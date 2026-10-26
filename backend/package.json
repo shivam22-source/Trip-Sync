@@ -6,7 +6,16 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "test": "jest --runInBand"
+    "test": "jest --runInBand",
+    "test:coverage": "jest --runInBand --coverage",
+    "test:load:api": "artillery run --env-file testing/.env testing/artillery-api-test.yml",
+    "test:load:auth": "artillery run --env-file testing/.env testing/artillery-auth.yml",
+    "test:load:login": "artillery run --env-file testing/.env testing/artillery-login.yml",
+    "test:load:expenses": "artillery run --env-file testing/.env testing/artillery-expanse.yml",
+    "test:load:messages": "artillery run --env-file testing/.env testing/artillery-message.yml",
+    "test:load:join-requests": "artillery run --env-file testing/.env testing/artillery-join.yml",
+    "test:load:spike": "artillery run --env-file testing/.env testing/artillery-spike.yml",
+    "test:load:api:report": "node -e \"require('fs').mkdirSync('test-results',{recursive:true})\" && artillery run --env-file testing/.env --output test-results/api-report.json testing/artillery-api-test.yml"
   },
   "keywords": [],
   "author": "",
@@ -43,5 +52,4 @@
     "jest": "^30.5.1",
     "nodemon": "^3.1.14"
   }
-  
 }
